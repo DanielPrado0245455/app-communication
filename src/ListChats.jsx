@@ -31,7 +31,7 @@ function ListChats({ chats, onChatSelect, setChats, currentUser, users }) {
             user: currentUserUsername,
             img: './assets/Apodo.png',
             messages: [],
-            participants: [currentUserUsername], // Agrega el currentUser al crear un nuevo chat
+            participants: [currentUserUsername],
             requests: []
         };
         setChats([...chats, newChat]);
