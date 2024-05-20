@@ -1,0 +1,67 @@
+{
+  "users": [
+    {
+      "id": 1,
+      "username": "user1",
+      "nickname": "nickname1",
+      "password": "password1"
+    },
+    {
+      "id": 2,
+      "username": "user2",
+      "nickname": "nickname2",
+      "password": "password2"
+    },
+    {
+      "id": 3,
+      "username": "user3",
+      "nickname": "nickname3",
+      "password": "password3"
+    },
+    {
+      "id": 4,
+      "username": "user4",
+      "nickname": "nickname4",
+      "password": "password4"
+    },
+    {
+      "id": 5,
+      "username": "user5",
+      "nickname": "nickname5",
+      "password": "password5"
+    }
+  ],
+  "chats": [
+    {
+      "id": 1,
+      "name": "Chat 1",
+      "user": "user1",
+      "img": "./assets/Usuario.png",
+      "messages": [
+        {
+          "id": 1,
+          "text": "Hello, how are you?",
+          "sentByCurrentUser": true,
+          "user": "Tu"
+        },
+        {
+          "id": 2,
+          "text": "I'm fine, thank you!",
+          "sentByCurrentUser": false,
+          "user": "user1"
+        }
+      ],
+      "participants": ["user1", "user2", "user3"],
+      "requests": ["user4", "user5"]
+    },
+    {
+      "id": 2,
+      "name": "Chat 2",
+      "user": "user2",
+      "img": "./assets/Apodo.png",
+      "messages": [],
+      "participants": ["user1", "user4", "user5"],
+      "requests": ["user3"]
+    }
+  ]
+}

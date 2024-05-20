@@ -1,24 +1,43 @@
-import logo from './logo.svg';
-import './App.css';
+// App.js
+import React, { useState, useEffect } from 'react';
+import { BrowserRouter, Route, Routes, useNavigate } from "react-router-dom";
+import data from './data/data.json';
+import Login from './Login';
+import Principal from './Principal';
+import SignUp from './SignUp';
 
 function App() {
+  const [users, setUsers] = useState([]);
+  const [chats, setChats] = useState([]);
+  
+  useEffect(() => {
+    setUsers(data.users);
+    setChats(data.chats);
+  }, []);
+
+  const handleLogin = (username, password, navigate) => {
+    const user = users.find(user => user.username === username && user.password === password);
+    if (user) {
+      navigate(`/principal/${user.id}`); // Redirige a la página principal con el userId en la URL
+    } else {
+      alert("Nombre de usuario o contraseña incorrectos");
+    }
+  };
+
   return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.js</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
-    </div>
+    <BrowserRouter className="App">
+      <Routes>
+        <Route
+          path="/"
+          element={<Login onLogin={handleLogin} />} 
+        />
+        <Route 
+          path="/principal/:userId" // Incluye el userId en la ruta
+          element={<Principal />} 
+        />
+        <Route path="/signup" element={<SignUp />} />
+      </Routes>
+    </BrowserRouter>
   );
 }
 

@@ -1,0 +1,116 @@
+.Login{
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 75%;
+    width: 70%;
+    background-color: #fffbfbdb;
+    border: 1px solid #ffffff;
+    border-radius: 10px;
+    box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.19);
+
+    .background{
+        display: flex;
+        height: 100%;
+        width: 60%;
+        background-color: #FFA500;
+        border: 1px solid #ffffff;
+        border-top-left-radius: 10px;
+        border-bottom-left-radius: 10px;
+        box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.19);
+        align-items: center;
+        justify-content: center;
+        flex-direction: column;
+
+        .logo{
+            display: flex;
+            height: 100px;
+        }
+
+        .bienvenida{
+            font-size: 30px;
+        }
+
+        .empresa{
+            font-size: 20px;
+        }
+
+        .chat{
+            font-size: 40px;
+        }
+        
+    }
+
+    .form{
+        display: flex;
+        height: 100%;
+        width: 40%;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        background-color: #ffffff;
+        border: 1px solid #ffffff;
+        border-top-right-radius: 10px;
+        border-bottom-right-radius: 10px;
+        box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.19);
+
+        .saludo{
+            font-size: 40px;
+        }
+
+        .instruccion{
+            font-size: 20px;
+        }
+
+        .input{
+            display: flex;
+            height: 40px;
+            width: 80%;
+            margin-top: 20px;
+            border-radius: 5px;
+            border: 1px solid #ffffff;
+            box-shadow: 0 4px 8px 0 rgba(255, 165, 0, 0.2), 0 6px 20px 0 rgba(255, 165, 0, 0.19);
+            &:hover{
+                cursor: pointer;
+            }
+
+            &:focus{
+                outline: #FFA500 2px solid;
+            }
+        }
+
+        .ingresarBtn{
+            display: block;
+            height: 40px;
+            width: 80%;
+            margin-top: 20px;
+            border-radius: 5px;
+            border: 1px solid #ffffff;  
+            background-color: #FFA500;
+            color: white;
+            font-weight: bold;
+            box-shadow: 0 4px 8px 0 rgba(255, 165, 0, 0.2), 0 6px 20px 0 rgba(255, 165, 0, 0.19);
+            
+            &:hover{
+                cursor: pointer;
+            }
+        }
+
+        .registrarseBtn{
+            display: block;
+            height: 40px;
+            width: 80%;
+            margin-top: 20px;
+            border-radius: 5px;
+            border: 1px solid #ffffff;  
+            background-color: #336666;
+            color: white;
+            font-weight: bold;
+            box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.19);
+                
+            &:hover{
+                cursor: pointer;
+            }
+        }
+    }
+}
