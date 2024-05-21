@@ -43,7 +43,7 @@ void sendMessageToServer(const char *msg) {
     }
 }
 
-int receiveMessageFromServer() {
+char* receiveMessageFromServer() {
     char buffer[bufferSize];
     int n = recv(clientSocketClient, buffer, sizeof(buffer), 0);
     if (n == -1) {
@@ -51,7 +51,8 @@ int receiveMessageFromServer() {
         exit(1);
     }
     buffer[n] = '\0';
-    return atoi(buffer);
+    char *message = strdup(buffer);
+    return message;
 }
 
 
@@ -89,7 +90,8 @@ int main() {
     setupClient(ipAddress, port);
     printf("Client connected to server at %s:%s\n", ipAddress, port);
 
-    printf("Enter a user,password: ");
+    printf("\nEnter the following options with the format [instruction],[username],[extraData]:\n\n1. "
+           "authenticate,username,password\n2. createGroup,username,groupName\n\n");
     fgets(userMessage, sizeof(userMessage), stdin);
     userMessage[strcspn(userMessage, "\n")] = 0;
 
@@ -98,8 +100,8 @@ int main() {
     sendMessageToServer(userMessage);
     printf("User sent to server: %s\n", userMessage);
 
-    int response = receiveMessageFromServer();
-    printf("Response from server: %d\n", response);
+    char *response = receiveMessageFromServer();
+    printf("Response from server: %s\n", response);
 
     closeConnection();
     printf("Connection closed.\n");

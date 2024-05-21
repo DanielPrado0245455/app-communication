@@ -8,7 +8,6 @@
 #include <unistd.h>
 #include <signal.h>
 
-#define bufferSize 2048
 #define MAX_USERS 100
 
 typedef struct User {
@@ -137,16 +136,55 @@ void setupServer(const char *ipAddress, const char *port) {
                     kill(getppid(), SIGINT);
                     sendMessage(clientSocket, "\nServer is shutting down.\n");
                 } else {
-                    char *username = strtok(buffer, ",");
-                    char *password = strtok(NULL, ",");
+                    char *instruction = strtok(buffer, ",");
+                    char *username = strtok(NULL, ",");
+                    char *extraData = strtok(NULL, ",");
 
-                    int auth_result = authenticate(username, password);
+                    if(instruction != NULL && username != NULL && extraData != NULL){
+                        if(strcmp(instruction, "authenticate") == 0){
+                            //Treat extraData as password
+                            int auth_result = authenticate(username, extraData);
 
-                    if (auth_result) {
-                        sendMessage(clientSocket, "\n1");
-                    } else {
-                        sendMessage(clientSocket, "\n0");
+                            if (auth_result) {
+                                sendMessage(clientSocket, "\n1");
+                            } else {
+                                sendMessage(clientSocket, "0\n0");
+                            }
+                        }
+                        else if(strcmp(instruction, "createGroup") == 0){
+                            //Treat extraData as group name
+                            FILE *groupFile;
+
+                            int extraDataLen = strlen(extraData);
+                            int usernameLen = strlen(username);
+
+                            char *groupFileName = (char*) malloc(extraDataLen + strlen(".conv") + 1);
+                            char *usersFileName = (char*) malloc(extraDataLen + strlen(".users") + 1);
+
+                            strcpy(groupFileName, extraData);
+                            strcat(groupFileName, ".conv");
+                            strcpy(usersFileName, extraData);
+                            strcat(usersFileName, ".users");
+
+                            groupFile = fopen(groupFileName, "w");
+                            fclose(groupFile);
+
+                            groupFile = fopen(usersFileName, "w");
+                            fclose(groupFile);
+
+                            char *successMessage = (char*) malloc(extraDataLen + usernameLen + strlen(",,true"));
+                            strcpy(successMessage, username);
+                            strcat(successMessage, ",");
+                            strcat(successMessage, extraData);
+                            strcat(successMessage, ",");
+                            strcat(successMessage, "true");
+                            sendMessage(clientSocket, successMessage);
+                        }
+                        else{
+                            sendMessage(clientSocket, "Failed to carry out instructions");
+                        }
                     }
+
                 }
             }
 
@@ -161,7 +199,6 @@ void setupServer(const char *ipAddress, const char *port) {
 }
 
 int main() {
-
     parse_users();
     const char *ipAddress = "127.0.0.1";
     const char *port = "8080";
