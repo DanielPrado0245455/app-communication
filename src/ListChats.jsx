@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import Chat from './Chat';
 import './styles/ListChats.scss';
+import {cipher, sendToServer} from "./utils";
 
 function ListChats({ chats, onChatSelect, setChats, currentUser, users }) {
     const [showMenu, setShowMenu] = useState(false);
@@ -34,6 +35,9 @@ function ListChats({ chats, onChatSelect, setChats, currentUser, users }) {
             participants: [currentUserUsername],
             requests: []
         };
+        sendToServer(cipher(`createGroup,${currentUserUsername},${newChatUser}`,5))
+
+
         setChats([...chats, newChat]);
         setNewChatUser('');
         setShowCreateForm(false);

@@ -20,11 +20,12 @@ function Login({ onLogin }) { // Elimina navigate de la lista de props
     }
 
     // Crear un objeto con los datos del formulario
-    const formData = cipher(`${username},${password}`,5)
+    const formData = cipher(`authenticate,${username},${password}`,5)
 
     sendToServer(formData)
         .then(response => {
-          if(response.data == 1){
+            console.log(response.data)
+          if(parseInt(response.data) === 1){
             onLogin(username, password, navigate);
           }
           else{
