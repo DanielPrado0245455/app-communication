@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
 import Chat from './Chat';
 import './styles/ListChats.scss';
+import { cipher } from "./utils/clientCipher"; 
 
 function ListChats({ chats, onChatSelect, setChats, currentUser, users }) {
     const [showMenu, setShowMenu] = useState(false);
     const [newChatUser, setNewChatUser] = useState('');
     const [showCreateForm, setShowCreateForm] = useState(false);
     const [showJoinChatModal, setShowJoinChatModal] = useState(false);
+
     const currentUserObj = users.find(user => user.id === parseInt(currentUser));
     const currentUserUsername = currentUserObj ? currentUserObj.username : null;
 
@@ -24,6 +26,11 @@ function ListChats({ chats, onChatSelect, setChats, currentUser, users }) {
         setShowMenu(false);
     };
 
+    const encryptedUser = (value) => {
+        const encryptedUser = cipher(value,5 );
+        console.log(encryptedUser);
+    };
+
     const handleCreateFormSubmit = (event) => {
         event.preventDefault();
         const newChat = {
@@ -34,6 +41,8 @@ function ListChats({ chats, onChatSelect, setChats, currentUser, users }) {
             participants: [currentUserUsername],
             requests: []
         };
+        
+        encryptedUser(`${newChat.user}${newChat.name}`);
         setChats([...chats, newChat]);
         setNewChatUser('');
         setShowCreateForm(false);
@@ -49,7 +58,6 @@ function ListChats({ chats, onChatSelect, setChats, currentUser, users }) {
             setShowJoinChatModal(false);
         }
     };
-    
 
     const userChats = chats.filter(chat => {
         
