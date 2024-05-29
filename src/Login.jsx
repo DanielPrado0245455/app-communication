@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { useNavigate } from "react-router-dom"; // Importa useNavigate desde react-router-dom
 import "./styles/Login.scss";
 import Logo from "./assets/Logo.png";
+import {sendToServer, cipher} from "./utils";
+
 
 function Login({ onLogin }) { // Elimina navigate de la lista de props
   const navigate = useNavigate(); // Utiliza useNavigate dentro del componente para la navegación
@@ -10,18 +12,32 @@ function Login({ onLogin }) { // Elimina navigate de la lista de props
   const [error, setError] = useState('');
 
   const handleLoginSubmit = () => {
+
     // Validar que se haya ingresado un nombre de usuario y una contraseña
     if (!username || !password) {
       setError('Por favor, ingrese un nombre de usuario y una contraseña.');
       return;
     }
 
-    // Llamar a la función de autenticación proporcionada con el nombre de usuario y la contraseña
-    const isAuthenticated = onLogin(username, password, navigate); // Pasa navigate como argumento
-    if (!isAuthenticated) {
-      setError('Nombre de usuario o contraseña incorrectos.');
-    }
+    // Crear un objeto con los datos del formulario
+    const formData = cipher(`authenticate,${username},${password}`,5)
+
+    sendToServer(formData)
+        .then(response => {
+            console.log(response.data)
+          if(parseInt(response.data) === 1){
+            onLogin(username, password, navigate);
+          }
+          else{
+            alert("Incorrecto")
+          }
+        })
+        .catch(error => {
+          // Handle any errors that occurred during the WebSocket communication
+        });
+
   };
+
 
   const handleRegisterClick = () => {
     navigate('/signup'); // Navegar a la página de registro al hacer clic en el botón de registro
