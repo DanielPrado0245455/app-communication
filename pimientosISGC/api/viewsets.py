@@ -12,11 +12,20 @@ class UsuarioViewSet(viewsets.ModelViewSet):
 class MensajeViewSet(viewsets.ModelViewSet):
     queryset = Message.objects.all()
     serializer_class = MensajeSerializer
+    filter_backends = [django_filters.rest_framework.DjangoFilterBackend]
+    filterset_fields = '__all__'
+
 
 class ChatroomViewSet(viewsets.ModelViewSet):
     queryset = Chatroom.objects.all()
     serializer_class = ChatroomSerializer
+    filter_backends = [django_filters.rest_framework.DjangoFilterBackend]
+    filterset_fields = '__all__'
+
 
 class ElobbyViewSet(viewsets.ModelViewSet):
     queryset = Elobby.objects.all()
     serializer_class = ElobbySerializer
+    filter_backends = [django_filters.rest_framework.DjangoFilterBackend]
+    filterset_fields = '__all__'
+
