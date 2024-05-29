@@ -8,6 +8,8 @@
 #include <sys/time.h>
 #include <signal.h>
 #include <sys/wait.h>
+#include <fcntl.h> // For fcntl
+#include <sys/time.h> // For struct timeval
 
 volatile sig_atomic_t shutdown_server = 0;
 
@@ -53,10 +55,64 @@ void sendMessage(int socket, const char *message) {
     }
 }
 
-char *forwardMessageToDjango(const char *message) {
+char *extractHeaders(const char *response, size_t responseSize) {
+    char *headersEnd = strstr(response, "\r\n\r\n");
+    if (!headersEnd) {
+        return NULL;
+    }
+
+    size_t headersLength = headersEnd - response + 4; // Including the "\r\n\r\n"
+    char *headers = malloc(headersLength + 1);
+    if (!headers) {
+        perror("malloc");
+        return NULL;
+    }
+
+    strncpy(headers, response, headersLength);
+    headers[headersLength] = '\0'; // Null-terminate the headers string
+
+    return headers;
+}
+
+char *extractBody(const char *response, size_t responseSize) {
+    char *headersEnd = strstr(response, "\r\n\r\n");
+    if (!headersEnd) {
+        return NULL;
+    }
+
+    size_t headersLength = headersEnd - response + 4; // Including the "\r\n\r\n"
+    size_t bodyLength = responseSize - headersLength;
+
+    char *body = malloc(bodyLength + 1);
+    if (!body) {
+        perror("malloc");
+        return NULL;
+    }
+
+    strncpy(body, response + headersLength, bodyLength);
+    body[bodyLength] = '\0'; // Null-terminate the body string
+
+    return body;
+}
+
+int setupDjangoSocket(){
     int djangoSocket = socket(AF_INET, SOCK_STREAM, 0);
     if (djangoSocket == -1) {
         perror("socket");
+        return NULL;
+    }
+
+    // Set the socket to non-blocking mode
+    int flags = fcntl(djangoSocket, F_GETFL, 0);
+    if (flags == -1) {
+        perror("fcntl(F_GETFL)");
+        close(djangoSocket);
+        return NULL;
+    }
+
+    if (fcntl(djangoSocket, F_SETFL, flags | O_NONBLOCK) == -1) {
+        perror("fcntl(F_SETFL)");
+        close(djangoSocket);
         return NULL;
     }
 
@@ -67,10 +123,17 @@ char *forwardMessageToDjango(const char *message) {
     djangoAddress.sin_port = htons(8000);
 
     if (connect(djangoSocket, (struct sockaddr *)&djangoAddress, sizeof(djangoAddress)) == -1) {
-        perror("connect");
-        close(djangoSocket);
-        return NULL;
+        if (errno != EINPROGRESS) {
+            perror("connect");
+            close(djangoSocket);
+            return NULL;
+        }
     }
+    return djangoSocket;
+}
+
+char *forwardMessageToDjango(const char *message) {
+    int djangoSocket = setupDjangoSocket();
 
     sendMessage(djangoSocket, message);
 
@@ -83,14 +146,33 @@ char *forwardMessageToDjango(const char *message) {
         return NULL;
     }
 
-    struct timeval tv;
-    tv.tv_sec = 2;  // 2 seconds timeout
-    tv.tv_usec = 0;
-    setsockopt(djangoSocket, SOL_SOCKET, SO_RCVTIMEO, (const char*)&tv, sizeof tv);
+    ssize_t bytesReceived = 0;
+    int headersReceived = 0;
+    int contentLength = -1;
 
-    ssize_t bytesReceived;
-    printf("Response from Django server: ");
-    while ((bytesReceived = recv(djangoSocket, response + responseSize, bufferSize - responseSize - 1, 0)) > 0) {
+    // Set a timeout for recv
+    struct timeval tv;
+    tv.tv_sec = 5;  // 5 seconds timeout
+    tv.tv_usec = 0;
+    setsockopt(djangoSocket, SOL_SOCKET, SO_RCVTIMEO, (const char*)&tv, sizeof(tv));
+
+    while (1) {
+        bytesReceived = recv(djangoSocket, response + responseSize, bufferSize - responseSize - 1, 0);
+        if (bytesReceived == -1) {
+            if (errno == EWOULDBLOCK || errno == EAGAIN) {
+                // No data available right now, continue waiting
+                continue;
+            } else {
+                perror("recv");
+                free(response);
+                close(djangoSocket);
+                return NULL;
+            }
+        } else if (bytesReceived == 0) {
+            // Connection closed
+            break;
+        }
+
         responseSize += bytesReceived;
         if (responseSize >= bufferSize - 1) {
             bufferSize *= 2;
@@ -101,18 +183,75 @@ char *forwardMessageToDjango(const char *message) {
                 return NULL;
             }
         }
+
+        // Null-terminate the response for parsing
+        response[responseSize] = '\0';
+
+        // Check if we have received the headers
+        if (!headersReceived) {
+            char *headers = extractHeaders(response, responseSize);
+            if (headers) {
+                headersReceived = 1;
+                printf("Headers: %s\n", headers);
+                free(headers);
+
+                // Find the Content-Length header
+                char *contentLengthStr = strstr(response, "Content-Length:");
+                if (contentLengthStr) {
+                    sscanf(contentLengthStr, "Content-Length: %d", &contentLength);
+                }
+            }
+        }
+
+        // If headers have been received and we have the Content-Length
+        if (headersReceived && contentLength != -1) {
+            // Calculate the body length received so far
+            int bodyLengthReceived = responseSize - (strstr(response, "\r\n\r\n") + 4 - response);
+            if (bodyLengthReceived >= contentLength) {
+                break;
+            }
+        }
     }
-    if (bytesReceived == -1 && errno != EWOULDBLOCK) {
-        perror("recv");
-        free(response);
-        close(djangoSocket);
-        return NULL;
-    }
+
+    // Ensure the response string is null-terminated
     response[responseSize] = '\0';
     printf("%s\n", response);
 
+
     close(djangoSocket);
     return response;
+}
+
+char *processResponse(char *response, void (*cipherFunc)(char *, int), int key) {
+    // Extract headers and body
+    char *headers = extractHeaders(response, strlen(response));
+    char *body = extractBody(response, strlen(response));
+
+    if (!headers || !body) {
+        free(headers);
+        free(body);
+        return response; // Return original response if extraction fails
+    }
+
+    // Apply the cipher/decipher function to the body
+    cipherFunc(body, key);
+
+    // Reconstruct the HTTP response with the modified body
+    size_t newResponseSize = strlen(headers) + strlen(body) + 1;
+    char *newResponse = malloc(newResponseSize);
+    if (!newResponse) {
+        perror("malloc");
+        free(headers);
+        free(body);
+        return response; // Return original response if memory allocation fails
+    }
+
+    snprintf(newResponse, newResponseSize, "%s%s", headers, body);
+
+    free(headers);
+    free(body);
+
+    return newResponse; // Return modified response
 }
 
 void handleClient(int clientSocket) {
@@ -125,13 +264,28 @@ void handleClient(int clientSocket) {
             kill(getppid(), SIGINT);
             sendMessage(clientSocket, "\nServer is shutting down.\n");
         } else {
-            printf("%s", buffer);
-            char *response = forwardMessageToDjango(buffer);
+            // Process the request to apply the decipher function
+            char *modifiedRequest = processResponse(buffer, decipher, 0); // Using 0 as the key to decipher
+
+            char *response = forwardMessageToDjango(modifiedRequest);
             if (response) {
-                sendMessage(clientSocket, response);
+                // Process the response to apply the cipher/decipher function
+                char *modifiedResponse = processResponse(response, decipher, 1); // Using 0 as the key to decipher
+
+                // Send the modified response back to the client
+                sendMessage(clientSocket, modifiedResponse);
+
+                if (modifiedResponse != response) {
+                    free(modifiedResponse);
+                }
+
                 free(response);
             } else {
                 sendMessage(clientSocket, "Failed to connect to Django server.");
+            }
+
+            if (modifiedRequest != buffer) {
+                free(modifiedRequest);
             }
         }
     }
@@ -193,7 +347,7 @@ void setupServer(const char *ipAddress, const char *port) {
 
 int main() {
     const char *ipAddress = "127.0.0.1";
-    const char *port = "8080";
+    const char *port = "8088";
 
     setupServer(ipAddress, port);
 
