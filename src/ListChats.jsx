@@ -31,15 +31,29 @@ function ListChats({ chats, onChatSelect, setChats, currentUser, users }) {
     const handleCreateFormSubmit = (event) => {
         event.preventDefault();
         const newChat = {
-            name: newChatUser,
-            user: currentUser,
-            img: './assets/Apodo.png',
-            messages: [],
+            creator: currentUser,
             users: [currentUser],
-            requests: []
+            requests: [],
+            title: newChatUser
         };
         
-        encryptedUser(`${newChat.user}${newChat.name}`);
+        fetch('/api/chatrooms/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(newChat)
+        })
+        .then(response => response.json())
+        .then(data => {
+            console.log(data);
+            setChats([...chats, data]);
+            setNewChatUser('');
+            setShowCreateForm(false);
+        })
+        .catch(error => {
+            console.error('Error creating chat:', error);
+        });
         setChats([...chats, newChat]);
         setNewChatUser('');
         setShowCreateForm(false);

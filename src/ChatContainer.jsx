@@ -17,7 +17,6 @@ function ChatContainer(props) {
     const [participants, setParticipants] = useState([]);
     const [activeParticipants, setActiveParticipants] = useState([]);
     const messagesEndRef = useRef(null);
-
     const scrollToBottom = () => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     };
@@ -35,35 +34,27 @@ function ChatContainer(props) {
     useEffect(() => {
         setActiveParticipants(props.chat ? props.chat.users : []);
     }, [props.chat]);
-
+    
     useEffect(() => {
-        // Establecer un intervalo para consultar nuevos mensajes cada 5 segundos
-        const interval = setInterval(fetchNewMessages, 5000);
+        if (props.chat) {
+            const fetchMessages = () => {
+                fetch(`/api/mensajes/?chatroom=${props.chat.id}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        setMessages(data);
+                    })
+                    .catch(error => console.error('Error fetching messages:', error));
+            };
 
-        // Limpiar el intervalo cuando el componente se desmonte
-        return () => clearInterval(interval);
-    }, []);
+            fetchMessages(); // Fetch messages immediately
+            const intervalId = setInterval(fetchMessages, 5000); // Fetch messages every 5 seconds
 
-    const fetchNewMessages = () => {
-        // Realizar una solicitud al servidor para obtener nuevos mensajes
-        fetch('/api/mensajes/')
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error('Failed to fetch new messages');
-                }
-                return response.json();
-            })
-            .then(data => {
-                // Filtrar solo los mensajes que no estén presentes en el estado actual
-                const newMessages = data.filter(message => !messages.some(existingMessage => existingMessage.id === message.id));
-                // Actualizar el estado de los mensajes con los nuevos mensajes recibidos
-                setMessages(prevMessages => [...prevMessages, ...newMessages]);
-            })
-            .catch(error => {
-                console.error('Error fetching new messages:', error);
-                // Manejar cualquier error de solicitud aquí
-            });
-    };
+            return () => {
+                clearInterval(intervalId); // Clear interval on component unmount
+            };
+        }
+    }, [props.chat]);
+    
 
     const handleInputChange = (event) => {
         setNewMessage(event.target.value);
@@ -214,6 +205,8 @@ function ChatContainer(props) {
                             participants={participants}
                             onClose={closeAddParticipantModal}
                             onParticipantSelect={handleAddParticipant}
+                            chatroomId={props.chat.id}
+                            chat={props.chat}
                         />
                     )}
                     {showActiveParticipantsModal && (

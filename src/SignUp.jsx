@@ -1,5 +1,4 @@
-import React, { useState } from 'react';
-import data from './data/data.json'; // Importa el archivo JSON
+import React, { useState, useEffect } from 'react';
 import Logo from './assets/Logo.png';
 import './styles/SignUp.scss';
 
@@ -7,36 +6,58 @@ function SignUp() {
   const [username, setUsername] = useState('');
   const [nickname, setNickname] = useState('');
   const [password, setPassword] = useState('');
+  const [elobby, setElobby] = useState('');
   const [error, setError] = useState('');
 
+  useEffect(() => {
+    fetch('/api/elobbies/',{
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    })
+    .then(response => response.json())
+    .then(data => {
+      setElobby(data[0].name);
+      console.log(data[0].name);
+    })
+  }, []);
   const handleSignUp = () => {
-    // Verifica si el usuario ya está registrado
-    const existingUser = data.users.find(user => user.username === username);
-    if (existingUser) {
-      setError('El usuario ya está registrado');
+    // Valida que se hayan ingresado todos los campos
+    if (!username || !nickname || !password) {
+      setError('Por favor, completa todos los campos.');
       return;
     }
 
-    // Crea un nuevo usuario y lo agrega al archivo JSON
+    // Crea un objeto con los datos del nuevo usuario
     const newUser = {
-      id: data.users.length + 1,
       username,
+      password,
       nickname,
-      password
+      elobby
     };
-    data.users.push(newUser);
+    console.log(newUser);
 
-    // Actualiza el archivo JSON (en este caso, simplemente se imprime en la consola)
-    console.log(data);
-
-    // Redirige al usuario a la página principal después del registro exitoso
-    window.location.href = '/principal';
-
-    // Limpia los campos de entrada después del registro exitoso
-    setUsername('');
-    setNickname('');
-    setPassword('');
-    setError('');
+    // Realiza una solicitud POST al servidor para registrar el nuevo usuario
+    fetch('/api/usuarios/', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(newUser)
+    })
+    .then(response => {
+      if (!response.ok) {
+        throw new Error('Failed to register user');
+      }
+      // Redirige al usuario a la página principal después del registro exitoso
+      window.location.href = `/principal/${username}`;
+    })
+    .catch(error => {
+      console.error('Error registering user:', error);
+      // Muestra un mensaje de error en caso de fallo en el registro
+      setError('Error al registrar usuario. Por favor, intenta nuevamente.');
+    });
   };
 
   return (
