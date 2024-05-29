@@ -1,22 +1,13 @@
+#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
+#include <unistd.h>
 #include <arpa/inet.h>
 #include <sys/socket.h>
-
-#include <unistd.h>
+#include <sys/time.h>
 #include <signal.h>
-
-#define MAX_USERS 100
-
-typedef struct User {
-    char *user;
-    char *password;
-} User;
-
-User users[MAX_USERS];
-int user_count = 0;
+#include <sys/wait.h>
 
 volatile sig_atomic_t shutdown_server = 0;
 
@@ -25,38 +16,6 @@ int serverSocket;
 void terminate(int sig) {
     shutdown_server = 1;
     close(serverSocket);
-}
-
-int authenticate(const char *username, const char *password) {
-    for (int i = 0; i < user_count; i++) {
-        if (strcmp(users[i].user, username) == 0 && strcmp(users[i].password, password) == 0) {
-            return 1; // autenticado
-        }
-    }
-    return 0;
-}
-
-void parse_users() {
-    FILE *file = fopen("users.csv", "r");
-    if (!file) {
-        perror("Failed to open user databse");
-        exit(1);
-    }
-
-    char line[1024];
-    while (fgets(line, sizeof(line), file) && user_count < MAX_USERS) {
-        // Le hace strip al salto de linea en linux
-        line[strcspn(line, "\r\n")] = 0;
-        users[user_count].user = strdup(strtok(line, ","));
-        users[user_count].password = strdup(strtok(NULL, ","));
-        user_count++;
-    }
-
-    fclose(file);
-}
-
-void sendMessage(int socket, const char *message) {
-    send(socket, message, strlen(message), 0);
 }
 
 void decipher(char msg[], int key){
@@ -77,6 +36,108 @@ void decipher(char msg[], int key){
 
         msg[i] = displacedChar;
     }
+}
+
+void sendMessage(int socket, const char *message) {
+    size_t length = strlen(message);
+    size_t totalSent = 0;
+    ssize_t sent;
+
+    while (totalSent < length) {
+        sent = send(socket, message + totalSent, length - totalSent, 0);
+        if (sent == -1) {
+            perror("send");
+            return;
+        }
+        totalSent += sent;
+    }
+}
+
+char *forwardMessageToDjango(const char *message) {
+    int djangoSocket = socket(AF_INET, SOCK_STREAM, 0);
+    if (djangoSocket == -1) {
+        perror("socket");
+        return NULL;
+    }
+
+    struct sockaddr_in djangoAddress;
+    memset(&djangoAddress, 0, sizeof(djangoAddress));
+    djangoAddress.sin_family = AF_INET;
+    djangoAddress.sin_addr.s_addr = inet_addr("127.0.0.1");
+    djangoAddress.sin_port = htons(8000);
+
+    if (connect(djangoSocket, (struct sockaddr *)&djangoAddress, sizeof(djangoAddress)) == -1) {
+        perror("connect");
+        close(djangoSocket);
+        return NULL;
+    }
+
+    sendMessage(djangoSocket, message);
+
+    size_t bufferSize = 2048;
+    size_t responseSize = 0;
+    char *response = malloc(bufferSize);
+    if (!response) {
+        perror("malloc");
+        close(djangoSocket);
+        return NULL;
+    }
+
+    struct timeval tv;
+    tv.tv_sec = 2;  // 2 seconds timeout
+    tv.tv_usec = 0;
+    setsockopt(djangoSocket, SOL_SOCKET, SO_RCVTIMEO, (const char*)&tv, sizeof tv);
+
+    ssize_t bytesReceived;
+    printf("Response from Django server: ");
+    while ((bytesReceived = recv(djangoSocket, response + responseSize, bufferSize - responseSize - 1, 0)) > 0) {
+        responseSize += bytesReceived;
+        if (responseSize >= bufferSize - 1) {
+            bufferSize *= 2;
+            response = realloc(response, bufferSize);
+            if (!response) {
+                perror("realloc");
+                close(djangoSocket);
+                return NULL;
+            }
+        }
+    }
+    if (bytesReceived == -1 && errno != EWOULDBLOCK) {
+        perror("recv");
+        free(response);
+        close(djangoSocket);
+        return NULL;
+    }
+    response[responseSize] = '\0';
+    printf("%s\n", response);
+
+    close(djangoSocket);
+    return response;
+}
+
+void handleClient(int clientSocket) {
+    char buffer[2048];
+    int bytes_read = recv(clientSocket, buffer, sizeof(buffer), 0);
+    if (bytes_read > 0) {
+        buffer[bytes_read] = '\0';
+
+        if (strcmp(buffer, "closed") == 0) {
+            kill(getppid(), SIGINT);
+            sendMessage(clientSocket, "\nServer is shutting down.\n");
+        } else {
+            printf("%s", buffer);
+            char *response = forwardMessageToDjango(buffer);
+            if (response) {
+                sendMessage(clientSocket, response);
+                free(response);
+            } else {
+                sendMessage(clientSocket, "Failed to connect to Django server.");
+            }
+        }
+    }
+
+    close(clientSocket);
+    exit(0);
 }
 
 void setupServer(const char *ipAddress, const char *port) {
@@ -120,78 +181,10 @@ void setupServer(const char *ipAddress, const char *port) {
             close(clientSocket);
         } else if (pid == 0) {
             close(serverSocket);
-
-            char buffer[2048];
-            int bytes_read = recv(clientSocket, buffer, sizeof(buffer), 0);
-            if (bytes_read > 0) {
-                buffer[bytes_read] = '\0';
-
-                printf("\nRecieved: ");
-                printf("%s", buffer);
-                decipher(buffer, 5);
-                printf("\nDeciphered: ");
-                printf("%s", buffer);
-
-                if (strcmp(buffer, "closed") == 0) {
-                    kill(getppid(), SIGINT);
-                    sendMessage(clientSocket, "\nServer is shutting down.\n");
-                } else {
-                    char *instruction = strtok(buffer, ",");
-                    char *username = strtok(NULL, ",");
-                    char *extraData = strtok(NULL, ",");
-
-                    if(instruction != NULL && username != NULL && extraData != NULL){
-                        if(strcmp(instruction, "authenticate") == 0){
-                            //Treat extraData as password
-                            int auth_result = authenticate(username, extraData);
-
-                            if (auth_result) {
-                                sendMessage(clientSocket, "\n1");
-                            } else {
-                                sendMessage(clientSocket, "0\n0");
-                            }
-                        }
-                        else if(strcmp(instruction, "createGroup") == 0){
-                            //Treat extraData as group name
-                            FILE *groupFile;
-
-                            int extraDataLen = strlen(extraData);
-                            int usernameLen = strlen(username);
-
-                            char *groupFileName = (char*) malloc(extraDataLen + strlen(".conv") + 1);
-                            char *usersFileName = (char*) malloc(extraDataLen + strlen(".users") + 1);
-
-                            strcpy(groupFileName, extraData);
-                            strcat(groupFileName, ".conv");
-                            strcpy(usersFileName, extraData);
-                            strcat(usersFileName, ".users");
-
-                            groupFile = fopen(groupFileName, "w");
-                            fclose(groupFile);
-
-                            groupFile = fopen(usersFileName, "w");
-                            fclose(groupFile);
-
-                            char *successMessage = (char*) malloc(extraDataLen + usernameLen + strlen(",,true"));
-                            strcpy(successMessage, username);
-                            strcat(successMessage, ",");
-                            strcat(successMessage, extraData);
-                            strcat(successMessage, ",");
-                            strcat(successMessage, "true");
-                            sendMessage(clientSocket, successMessage);
-                        }
-                        else{
-                            sendMessage(clientSocket, "Failed to carry out instructions");
-                        }
-                    }
-
-                }
-            }
-
-            close(clientSocket);
-            exit(0);
+            handleClient(clientSocket);
         } else {
             close(clientSocket);
+            while (waitpid(-1, NULL, WNOHANG) > 0);
         }
     }
 
@@ -199,15 +192,10 @@ void setupServer(const char *ipAddress, const char *port) {
 }
 
 int main() {
-    parse_users();
     const char *ipAddress = "127.0.0.1";
     const char *port = "8080";
-    setupServer(ipAddress, port);
 
-    for (int i = 0; i < user_count; i++) {
-        free(users[i].user);
-        free(users[i].password);
-    }
+    setupServer(ipAddress, port);
 
     printf("Server closed.\n");
 
