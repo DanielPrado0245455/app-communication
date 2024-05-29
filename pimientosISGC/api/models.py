@@ -35,6 +35,7 @@ class Message(models.Model):
 class Chatroom(models.Model):
     creator = models.ForeignKey(UserProfile, on_delete=models.CASCADE, related_name='created_chatrooms')
     users = models.ManyToManyField(UserProfile, related_name='chatrooms')
+    requests = models.ManyToManyField(UserProfile, related_name='chatroom_requests')
     title = models.CharField(max_length=255)
     filter_backends = [django_filters.rest_framework.DjangoFilterBackend]
 

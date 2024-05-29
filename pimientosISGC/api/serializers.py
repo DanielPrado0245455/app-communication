@@ -17,6 +17,7 @@ class ChatroomSerializer(serializers.ModelSerializer):
     creator = serializers.PrimaryKeyRelatedField(queryset=UserProfile.objects.all())
     messages = MensajeSerializer(many=True, read_only=True)
     users = serializers.PrimaryKeyRelatedField(many=True, queryset=UserProfile.objects.all())
+    requests = serializers.PrimaryKeyRelatedField(many=True, queryset=UserProfile.objects.all())
 
     class Meta:
         model = Chatroom
