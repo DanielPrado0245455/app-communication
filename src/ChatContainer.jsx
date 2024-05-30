@@ -4,8 +4,10 @@ import Logo from './assets/LogoT.png';
 import ParticipantModal from './ParticipantModal';
 import ActiveParticipantsModal from './ActiveParticipantsModal';
 import RequestModal from './RequestModal';
+import { useParams } from 'react-router-dom';
 
 function ChatContainer(props) {
+    const { userId } = useParams(); // Obtén el userId de los parámetros de la URL
     const [messages, setMessages] = useState([]);
     const [newMessage, setNewMessage] = useState('');
     const [selectedParticipant, setSelectedParticipant] = useState(null);
@@ -15,7 +17,6 @@ function ChatContainer(props) {
     const [participants, setParticipants] = useState([]);
     const [activeParticipants, setActiveParticipants] = useState([]);
     const messagesEndRef = useRef(null);
-
     const scrollToBottom = () => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     };
@@ -31,8 +32,29 @@ function ChatContainer(props) {
     }, [props.chat]);
 
     useEffect(() => {
-        setActiveParticipants(props.chat ? props.chat.participants : []);
+        setActiveParticipants(props.chat ? props.chat.users : []);
     }, [props.chat]);
+    
+    useEffect(() => {
+        if (props.chat) {
+            const fetchMessages = () => {
+                fetch(`/api/mensajes/?chatroom=${props.chat.id}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        setMessages(data);
+                    })
+                    .catch(error => console.error('Error fetching messages:', error));
+            };
+
+            fetchMessages(); // Fetch messages immediately
+            const intervalId = setInterval(fetchMessages, 5000); // Fetch messages every 5 seconds
+
+            return () => {
+                clearInterval(intervalId); // Clear interval on component unmount
+            };
+        }
+    }, [props.chat]);
+    
 
     const handleInputChange = (event) => {
         setNewMessage(event.target.value);
@@ -47,21 +69,42 @@ function ChatContainer(props) {
     const sendMessage = () => {
         if (newMessage.trim() !== '') {
             const message = {
-                id: messages.length + 1,
-                text: newMessage.trim(),
-                sentByCurrentUser: true,
-                sender: 'Tu', 
-                recipient: selectedParticipant
+                user: userId,
+                text:  newMessage.trim(), // Asigna el userId como el remitente del mensaje
+                chatroom: props.chat.id // Asigna el participante seleccionado como el destinatario del mensaje
             };
-            setMessages([...messages, message]);
-            setNewMessage('');
-            props.onSendMessage(message);
+    
+            // Realiza la solicitud POST al backend para enviar el mensaje
+            fetch('/api/mensajes/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(message),
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Failed to send message');
+                }
+                return response.json();
+            })
+            .then(data => {
+                // Si la solicitud es exitosa, actualiza el estado de mensajes si es necesario
+                setMessages([...messages, data]); // Asumiendo que el servidor devuelve el mensaje creado con su ID
+                setNewMessage('');
+                props.onSendMessage(data); // Llama a la función onSendMessage con el mensaje enviado
+            })
+            .catch(error => {
+                console.error('Error sending message:', error);
+                // Maneja cualquier error de solicitud aquí
+            });
         }
     };
+    
 
     const getAvailableParticipants = () => {
         if (props.chat) {
-            return props.allParticipants.filter(user => !props.chat.participants.includes(user.username.toString()));
+            return props.allParticipants.filter(user => !props.chat.users.includes(user.username.toString()));
         } else {
             return [];
         }
@@ -115,8 +158,8 @@ function ChatContainer(props) {
                 <>
                     <div className="TopBar">
                         <div className="UserInfo">
-                            <img src={require(`${props.chat.img}`)} alt="User" className="UserChat" />
-                            <h1>{props.chat.name}</h1>
+                            <img src={require("./assets/Apodo.png")} alt="User" className="UserChat" />
+                            <h1>{props.chat.title}</h1>
                         </div>
                         <div className="Participants">
                             <button className="Btn" onClick={openAddParticipantModal}>
@@ -132,9 +175,9 @@ function ChatContainer(props) {
                     </div>
                     <div className="Messages">
                         {messages.map((message) => (
-                            <div key={message.id} className={`Message ${message.sentByCurrentUser ? 'sent' : 'received'}`}>
+                            <div key={message.id} className={`Message ${message.user === userId ? 'sent' : 'received'}`}>
                                 <div className="MessageHeader">
-                                    <span className="Sender">{message.sentByCurrentUser ? 'Tú' : message.sender}</span>
+                                    <span className="Sender">{message.user ?  userId === message.user ? 'Tu' : message.user: message.sender}</span>
                                 </div>
                                 <div className="MessageBody">
                                     {message.text}
@@ -162,6 +205,8 @@ function ChatContainer(props) {
                             participants={participants}
                             onClose={closeAddParticipantModal}
                             onParticipantSelect={handleAddParticipant}
+                            chatroomId={props.chat.id}
+                            chat={props.chat}
                         />
                     )}
                     {showActiveParticipantsModal && (
