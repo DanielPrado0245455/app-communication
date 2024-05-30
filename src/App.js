@@ -13,7 +13,6 @@ function App() {
       .then(response => response.json())
       .then(data => {
         setUsers(data); // Ajuste para la estructura de datos proporcionada
-        console.log('Fetched users:', data);
       })
       .catch(error => console.error('Error fetching users:', error));
   }, []); // Asegúrate de tener el arreglo de dependencias vacío para que se ejecute solo una vez

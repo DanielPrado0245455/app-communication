@@ -1,22 +1,26 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import './styles/ChatContainer.scss';
 import Logo from './assets/LogoT.png';
 import ParticipantModal from './ParticipantModal';
 import ActiveParticipantsModal from './ActiveParticipantsModal';
 import RequestModal from './RequestModal';
 import { useParams } from 'react-router-dom';
+import Apodo from './assets/Apodo.png';
+import Agregar from './assets/Agregar.png';
+import Participantes from './assets/Participantes.png';
+import Solicitud from './assets/Solicitud.png';
+import Enviar from './assets/Enviar.png';
 
 function ChatContainer(props) {
-    const { userId } = useParams(); // Obtén el userId de los parámetros de la URL
+    const { userId } = useParams();
     const [messages, setMessages] = useState([]);
     const [newMessage, setNewMessage] = useState('');
-    const [selectedParticipant, setSelectedParticipant] = useState(null);
     const [showAddParticipantModal, setShowAddParticipantModal] = useState(false);
     const [showActiveParticipantsModal, setShowActiveParticipantsModal] = useState(false);
     const [showRequestModal, setShowRequestModal] = useState(false);
-    const [participants, setParticipants] = useState([]);
     const [activeParticipants, setActiveParticipants] = useState([]);
     const messagesEndRef = useRef(null);
+
     const scrollToBottom = () => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     };
@@ -28,37 +32,30 @@ function ChatContainer(props) {
     useEffect(() => {
         if (props.chat) {
             setMessages(props.chat.messages || []);
+            setActiveParticipants(props.chat.users || []);
         }
     }, [props.chat]);
 
-    useEffect(() => {
-        setActiveParticipants(props.chat ? props.chat.users : []);
-    }, [props.chat]);
-    
     useEffect(() => {
         if (props.chat) {
-            const fetchMessages = () => {
-                fetch(`/api/mensajes/?chatroom=${props.chat.id}`)
-                    .then(response => response.json())
-                    .then(data => {
-                        setMessages(data);
-                    })
-                    .catch(error => console.error('Error fetching messages:', error));
+            const fetchMessages = async () => {
+                try {
+                    const response = await fetch(`/api/mensajes/?chatroom=${props.chat.id}`);
+                    const data = await response.json();
+                    setMessages(data);
+                } catch (error) {
+                    console.error('Error fetching messages:', error);
+                }
             };
 
-            fetchMessages(); // Fetch messages immediately
-            const intervalId = setInterval(fetchMessages, 5000); // Fetch messages every 5 seconds
+            fetchMessages();
+            const intervalId = setInterval(fetchMessages, 5000);
 
-            return () => {
-                clearInterval(intervalId); // Clear interval on component unmount
-            };
+            return () => clearInterval(intervalId);
         }
     }, [props.chat]);
-    
 
-    const handleInputChange = (event) => {
-        setNewMessage(event.target.value);
-    };
+    const handleInputChange = (event) => setNewMessage(event.target.value);
 
     const handleEnterPress = (event) => {
         if (event.key === 'Enter') {
@@ -66,80 +63,63 @@ function ChatContainer(props) {
         }
     };
 
-    const sendMessage = () => {
-        if (newMessage.trim() !== '') {
-            const message = {
-                user: userId,
-                text:  newMessage.trim(), // Asigna el userId como el remitente del mensaje
-                chatroom: props.chat.id // Asigna el participante seleccionado como el destinatario del mensaje
-            };
+    const sendMessage = useCallback(async () => {
+        if (newMessage.trim() === '') return;
     
-            // Realiza la solicitud POST al backend para enviar el mensaje
-            fetch('/api/mensajes/', {
+        if (!props.chat || !props.chat.id) {
+            console.error('No chat selected or chat ID is missing');
+            return;
+        }
+    
+        const message = {
+            user: userId,
+            text: newMessage.trim(),
+            chatroom: props.chat.id,
+        };
+    
+        try {
+            const response = await fetch('/api/mensajes/', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(message),
-            })
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error('Failed to send message');
-                }
-                return response.json();
-            })
-            .then(data => {
-                // Si la solicitud es exitosa, actualiza el estado de mensajes si es necesario
-                setMessages([...messages, data]); // Asumiendo que el servidor devuelve el mensaje creado con su ID
-                setNewMessage('');
-                props.onSendMessage(data); // Llama a la función onSendMessage con el mensaje enviado
-            })
-            .catch(error => {
-                console.error('Error sending message:', error);
-                // Maneja cualquier error de solicitud aquí
             });
+    
+            if (!response.ok) throw new Error('Failed to send message');
+    
+            const data = await response.json();
+            setMessages((prevMessages) => [...prevMessages, data]);
+            setNewMessage('');
+            props.onSendMessage(data);
+        } catch (error) {
+            console.error('Error sending message:', error);
         }
-    };
+    }, [newMessage, props.chat, userId, props.onSendMessage]);
     
 
-    const getAvailableParticipants = () => {
+    const getAvailableParticipants = useMemo(() => {
         if (props.chat) {
-            return props.allParticipants.filter(user => !props.chat.users.includes(user.username.toString()));
-        } else {
-            return [];
+            return props.allParticipants.filter((user) => !activeParticipants.includes(user.username.toString()));
         }
+        return [];
+    }, [props.allParticipants, activeParticipants]);
+
+    const openAddParticipantModal = () => setShowAddParticipantModal(true);
+    const closeAddParticipantModal = () => setShowAddParticipantModal(false);
+
+    const handleAddParticipant = (updatedUsers) => {
+        setActiveParticipants(updatedUsers);
+        closeAddParticipantModal();
     };
 
-    const openAddParticipantModal = () => {
-        setShowAddParticipantModal(true);
+    const handleDeleteParticipant = (updatedUsers) => {
+        setActiveParticipants(updatedUsers);
     };
 
-    const closeAddParticipantModal = () => {
-        setShowAddParticipantModal(false);
-    };
+    const openActiveParticipantsModal = () => setShowActiveParticipantsModal(true);
+    const closeActiveParticipantsModal = () => setShowActiveParticipantsModal(false);
 
-    const handleAddParticipant = (participant) => {
-        setSelectedParticipant(participant);
-        if (!participants.includes(participant)) {
-            setParticipants([...participants, participant]);
-        }
-    };
-
-    const openActiveParticipantsModal = () => {
-        setShowActiveParticipantsModal(true);
-    };
-
-    const closeActiveParticipantsModal = () => {
-        setShowActiveParticipantsModal(false);
-    };
-
-    const openRequestModal = () => {
-        setShowRequestModal(true);
-    };
-
-    const closeRequestModal = () => {
-        setShowRequestModal(false);
-    };
+    const openRequestModal = () => setShowRequestModal(true);
+    const closeRequestModal = () => setShowRequestModal(false);
 
     if (!props.chat) {
         return (
@@ -158,18 +138,18 @@ function ChatContainer(props) {
                 <>
                     <div className="TopBar">
                         <div className="UserInfo">
-                            <img src={require("./assets/Apodo.png")} alt="User" className="UserChat" />
+                            <img src={Apodo} alt="User" className="UserChat" />
                             <h1>{props.chat.title}</h1>
                         </div>
                         <div className="Participants">
                             <button className="Btn" onClick={openAddParticipantModal}>
-                                <img src={require("./assets/Agregar.png")} alt="Logo" className='Img' />
+                                <img src={Agregar} alt="Logo" className='Img' />
                             </button>
                             <button className="Btn" onClick={openActiveParticipantsModal}>
-                                <img src={require("./assets/Participantes.png")} alt="Logo" className='Img' />
+                                <img src={Participantes} alt="Logo" className='Img' />
                             </button>
                             <button className="Btn" onClick={openRequestModal}>
-                                <img src={require("./assets/Solicitud.png")} alt="Logo" className='Img' />
+                                <img src={Solicitud} alt="Logo" className='Img' />
                             </button>
                         </div>
                     </div>
@@ -177,7 +157,7 @@ function ChatContainer(props) {
                         {messages.map((message) => (
                             <div key={message.id} className={`Message ${message.user === userId ? 'sent' : 'received'}`}>
                                 <div className="MessageHeader">
-                                    <span className="Sender">{message.user ?  userId === message.user ? 'Tu' : message.user: message.sender}</span>
+                                    <span className="Sender">{message.user ? (userId === message.user ? 'Tu' : message.user) : message.sender}</span>
                                 </div>
                                 <div className="MessageBody">
                                     {message.text}
@@ -196,13 +176,12 @@ function ChatContainer(props) {
                             onKeyPress={handleEnterPress}
                         />
                         <button className="Btn" onClick={sendMessage}>
-                            <img src={require("./assets/Enviar.png")} alt="Logo" className='Img' />
+                            <img src={Enviar} alt="Logo" className='Img' />
                         </button>
                     </div>
                     {showAddParticipantModal && (
                         <ParticipantModal
-                            availableParticipants={getAvailableParticipants()} 
-                            participants={participants}
+                            availableParticipants={getAvailableParticipants}
                             onClose={closeAddParticipantModal}
                             onParticipantSelect={handleAddParticipant}
                             chatroomId={props.chat.id}
@@ -213,6 +192,9 @@ function ChatContainer(props) {
                         <ActiveParticipantsModal
                             participants={activeParticipants}
                             onClose={closeActiveParticipantsModal}
+                            chatroomId={props.chat.id}
+                            chat={props.chat}
+                            onDeleteParticipant={handleDeleteParticipant}
                         />
                     )}
                     {showRequestModal && (
