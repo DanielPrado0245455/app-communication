@@ -365,9 +365,16 @@ void setupServer(const char *ipAddress, const char *port) {
     close(serverSocket);
 }
 
-int main() {
+int main(int argc, char *argv[]) {
     const char *ipAddress = "127.0.0.1";
-    const char *port = "8080";
+    const char *port;
+
+    if (argc < 2) {
+        fprintf(stderr, "Usage: %s <port>\n", argv[0]);
+        return 1;
+    }
+
+    port = argv[1];
 
     setupServer(ipAddress, port);
 
