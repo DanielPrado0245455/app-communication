@@ -90,9 +90,9 @@ function ChatContainer(props) {
     
             if (!response.ok) throw new Error('Failed to send message');
     
-            const responseData = await response.text(); // Get response text
-            const decipheredData = decipher(responseData, 1); // Decipher the response data
-            const data = JSON.parse(decipheredData); // Parse the deciphered data
+            const responseData = await response.text();
+            const decipheredData = decipher(responseData, 1);
+            const data = JSON.parse(decipheredData);
     
             setMessages((prevMessages) => [...prevMessages, data]);
             setNewMessage('');
@@ -123,12 +123,13 @@ function ChatContainer(props) {
         closeAddParticipantModal();
     };
 
-    const handleDeleteParticipant = (updatedUsers) => {
+    const handleDeleteParticipant = useCallback((updatedUsers) => {
         setActiveParticipants(updatedUsers);
-        if (updatedUsers.length === 0) {
-            props.onChatDeleted();
+        if (updatedUsers.length === 0 && props.chat) {
+            props.onChatDeleted(props.chat.id);
+            setShowActiveParticipantsModal(false);
         }
-    };
+    }, [props.onChatDeleted, props.chat]);
 
     const openActiveParticipantsModal = () => setShowActiveParticipantsModal(true);
     const closeActiveParticipantsModal = () => setShowActiveParticipantsModal(false);
@@ -154,7 +155,7 @@ function ChatContainer(props) {
                     throw new Error('Failed to delete chatroom');
                 }
     
-                props.onChatDeleted();
+                props.onChatDeleted(props.chat.id);
             } catch (error) {
                 console.error('Error deleting chatroom:', error);
             }

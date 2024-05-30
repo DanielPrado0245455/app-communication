@@ -1,10 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useParams } from 'react-router-dom';
 import ListChats from './ListChats';
 import ChatContainer from './ChatContainer';
 import './styles/Principal.scss';
 import { decipher } from './utils/serverDecipher';
-import { cipher } from './utils/clientCipher';
 
 function Principal() {
     const { userId } = useParams();
@@ -83,7 +82,7 @@ function Principal() {
         return () => {
             clearInterval(intervalId);
         };
-    }, [initialChats]);
+    }, []);
 
     const handleChatSelect = (chat) => {
         setSelectedChat(chat);
@@ -122,18 +121,18 @@ function Principal() {
         }
     };
 
-    const handleChatDeleted = () => {
+    const handleChatDeleted = useCallback((deletedChatId) => {
         setSelectedChat(null);
-        setChats(prevChats => prevChats.filter(chat => chat.id !== selectedChat.id));
-    };
+        setChats(prevChats => prevChats.filter(chat => chat.id !== deletedChatId));
+    }, []);
 
-    const getAvailableParticipants = () => {
+    const getAvailableParticipants = useMemo(() => {
         if (selectedChat) {
             return users.filter(user => !selectedChat.users.some(participant => participant.toString() === user.username.toString()));
         } else {
             return [];
         }
-    };
+    }, [selectedChat, users]);
 
     return (
         <div className="Principal">
@@ -149,7 +148,7 @@ function Principal() {
                 chat={selectedChat}
                 onSendMessage={handleSendMessage}
                 allParticipants={users} 
-                availableParticipants={getAvailableParticipants()} 
+                availableParticipants={getAvailableParticipants} 
                 chats={chats} 
                 setChats={setChats}
                 onChatSelect={handleChatSelect} 
@@ -160,3 +159,4 @@ function Principal() {
 }
 
 export default Principal;
+
