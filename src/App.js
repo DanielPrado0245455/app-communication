@@ -4,18 +4,25 @@ import { BrowserRouter, Route, Routes, useNavigate } from "react-router-dom";
 import Login from './Login';
 import Principal from './Principal';
 import SignUp from './SignUp';
+import { cipher } from './utils/clientCipher';
+import { decipher } from './utils/serverDecipher';
 
 function App() {
   const [users, setUsers] = useState([]);
-  
   useEffect(() => {
     fetch('/api/usuarios/')
-      .then(response => response.json())
-      .then(data => {
-        setUsers(data); // Ajuste para la estructura de datos proporcionada
+      .then(response => response.text()) // Convert response to text
+      .then(text => {
+        const decipheredText = decipher(text, 1); // Apply your decipher function here
+        return JSON.parse(decipheredText); // Convert the deciphered text to JSON
       })
-      .catch(error => console.error('Error fetching users:', error));
-  }, []); // Asegúrate de tener el arreglo de dependencias vacío para que se ejecute solo una vez
+      .then(data => {
+        setUsers(data); // Update state with the fetched data
+        console.log('Fetched users:', data);
+      })
+      .catch(error => console.error('Error fetching users:', error)); // Handle any errors during the fetch operation
+  }, []); // Empty dependency array ensures this effect runs only once on component mount
+  
 
   const handleLogin = (username, password, navigate) => {
     const user = users.find(user => user.username === username && user.password === password);

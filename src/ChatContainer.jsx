@@ -10,6 +10,7 @@ import Agregar from './assets/Agregar.png';
 import Participantes from './assets/Participantes.png';
 import Solicitud from './assets/Solicitud.png';
 import Enviar from './assets/Enviar.png';
+import { decipher } from './utils/serverDecipher';
 
 function ChatContainer(props) {
     const { userId } = useParams();
@@ -32,6 +33,7 @@ function ChatContainer(props) {
     useEffect(() => {
         if (props.chat) {
             setMessages(props.chat.messages || []);
+            console.log(messages)
             setActiveParticipants(props.chat.users || []);
         }
     }, [props.chat]);
@@ -41,8 +43,10 @@ function ChatContainer(props) {
             const fetchMessages = async () => {
                 try {
                     const response = await fetch(`/api/mensajes/?chatroom=${props.chat.id}`);
-                    const data = await response.json();
-                    setMessages(data);
+                    const data = await response.text();
+                    const decipheredText = decipher(data, 1);
+                    const i = JSON.parse(decipheredText);
+                    setMessages(i);
                 } catch (error) {
                     console.error('Error fetching messages:', error);
                 }
@@ -149,6 +153,16 @@ function ChatContainer(props) {
         checkAndDeleteChatroom();
     }, [activeParticipants, checkAndDeleteChatroom]);
 
+    if (!props.chat) {
+        return (
+            <div className="ChatContainer">
+                <div className="NoChatSelected">
+                    <img src={Logo} alt="Logo" className="Logo" />
+                    <p className="NoChatSelectedText">Selecciona un chat para comenzar</p>
+                </div>
+            </div>
+        );
+    }
     return (
         <div className="ChatContainer">
             {props.chat && (
