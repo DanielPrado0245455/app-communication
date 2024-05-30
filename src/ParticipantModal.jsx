@@ -1,8 +1,6 @@
 import React from 'react';
 
-function ParticipantModal(props) {
-    const { availableParticipants, onClose, onParticipantSelect, chatroomId, chat } = props;
-
+function ParticipantModal({ availableParticipants, onClose, onParticipantSelect, chatroomId, chat }) {
     const handleCloseModal = (e) => {
         if (e.target.classList.contains('modal-overlay')) {
             onClose();
@@ -27,7 +25,7 @@ function ParticipantModal(props) {
             return response.json();
         })
         .then(data => {
-            onParticipantSelect(participant);
+            onParticipantSelect(data.users); // Pass the updated list of users
             onClose();
         })
         .catch(error => {

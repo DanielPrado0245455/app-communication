@@ -30,7 +30,7 @@ function Principal() {
     const handleSendMessage = (message) => {
         if (selectedChat) {
             const updatedChats = chats.map(chat => {
-                if (chat.creator === selectedChat.creator) {
+                if (chat.id === selectedChat.id) {
                     return {
                         ...chat,
                         messages: [...chat.messages, message]
@@ -50,16 +50,23 @@ function Principal() {
             return [];
         }
     };
-    
 
     return (
         <div className="Principal">
-            <ListChats chats={chats} onChatSelect={handleChatSelect} setChats={setChats} currentUser={userId} users={users} />
+            <ListChats 
+                chats={chats} 
+                onChatSelect={handleChatSelect} 
+                setChats={setChats} 
+                currentUser={userId} 
+                users={users} 
+            />
             <ChatContainer
                 chat={selectedChat}
                 onSendMessage={handleSendMessage}
                 allParticipants={users} 
-                availableParticipants={getAvailableParticipants()} // Pasamos la lista de participantes disponibles
+                availableParticipants={getAvailableParticipants()} 
+                chats={chats} // Pasar chats y setChats al ChatContainer
+                setChats={setChats}
             />
         </div>
     );

@@ -22,6 +22,12 @@ function SignUp() {
       console.log(data[0].name);
     })
   }, []);
+
+  const handleEnterPress = (event) => {
+    if (event.key === 'Enter') {
+        handleSignUp();
+    }
+};
   const handleSignUp = () => {
     // Valida que se hayan ingresado todos los campos
     if (!username || !nickname || !password) {
@@ -68,7 +74,7 @@ function SignUp() {
         <input
           type="text"
           className="input"
-          placeholder="Correo electrónico"
+          placeholder="Nombre de usuario"
           value={username}
           onChange={(e) => setUsername(e.target.value)}
         />
@@ -85,6 +91,7 @@ function SignUp() {
           placeholder="Contraseña"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
+          onKeyPress={handleEnterPress}
         />
         {error && <p className="error">{error}</p>}
         <input
@@ -92,6 +99,7 @@ function SignUp() {
           className="ingresarBtn"
           value="Registrarse"
           onClick={handleSignUp}
+          onKeyPress={handleEnterPress}
         />
       </div>
       <div className="background">
