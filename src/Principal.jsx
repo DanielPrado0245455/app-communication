@@ -3,6 +3,8 @@ import { useParams } from 'react-router-dom';
 import ListChats from './ListChats';
 import ChatContainer from './ChatContainer';
 import './styles/Principal.scss';
+import { cipher } from './utils/clientCipher';
+import { decipher } from './utils/serverDecipher';
 
 function Principal() {
     const { userId } = useParams(); // Obtén el userId de los parámetros de la URL
@@ -13,16 +15,27 @@ function Principal() {
     useEffect(() => {
         // Realizar solicitudes al backend para obtener los chats y usuarios
         fetch('/api/chatrooms/')
-            .then(response => response.json())
-            .then(data => setChats(data))
-            .catch(error => console.error('Error fetching chats:', error));
-
+          .then(response => response.text()) // Convertir la respuesta a texto
+          .then(text => {
+            const decipheredText = decipher(text, 1); // Aplicar la función decipher
+            return JSON.parse(decipheredText); // Convertir el texto descifrado a JSON
+          })
+          .then(data => {
+            setChats(data); // Actualizar el estado con los datos obtenidos
+          })
+          .catch(error => console.error('Error fetching chats:', error)); // Manejar cualquier error durante la operación de fetch
+    
         fetch('/api/usuarios/')
-            .then(response => response.json())
-            .then(data => setUsers(data))
-            .catch(error => console.error('Error fetching users:', error));
-    }, []);
-
+          .then(response => response.text()) // Convertir la respuesta a texto
+          .then(text => {
+            const decipheredText = decipher(text, 1); // Aplicar la función decipher
+            return JSON.parse(decipheredText); // Convertir el texto descifrado a JSON
+          })
+          .then(data => {
+            setUsers(data); // Actualizar el estado con los datos obtenidos
+          })
+          .catch(error => console.error('Error fetching users:', error)); // Manejar cualquier error durante la operación de fetch
+      }, []); // El array de dependencias vacío asegura que este efecto se ejecute solo una vez al montar el componente
     const handleChatSelect = (chat) => {
         setSelectedChat(chat);
     };

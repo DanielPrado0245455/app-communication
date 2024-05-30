@@ -40,6 +40,26 @@ void decipher(char msg[], int key){
     }
 }
 
+void cipher(char msg[], int key){
+    int length = strlen(msg);
+
+    if(key > 255){
+        key = 255;
+    }
+
+    char character;
+    int asciiCoded;
+    char displacedChar;
+
+    for(int i = 0; i < length; i++){
+        character = msg[i];
+        asciiCoded = ((int)character) + key;
+        displacedChar = (char)asciiCoded;
+
+        msg[i] = displacedChar;
+    }
+}
+
 void sendMessage(int socket, const char *message) {
     size_t length = strlen(message);
     size_t totalSent = 0;
@@ -265,12 +285,12 @@ void handleClient(int clientSocket) {
             sendMessage(clientSocket, "\nServer is shutting down.\n");
         } else {
             // Process the request to apply the decipher function
-            char *modifiedRequest = processResponse(buffer, decipher, 0); // Using 0 as the key to decipher
+            char *modifiedRequest = processResponse(buffer, decipher, 1); // Using 0 as the key to decipher
 
             char *response = forwardMessageToDjango(modifiedRequest);
             if (response) {
                 // Process the response to apply the cipher/decipher function
-                char *modifiedResponse = processResponse(response, decipher, 1); // Using 0 as the key to decipher
+                char *modifiedResponse = processResponse(response, cipher, 1); // Using 0 as the key to decipher
 
                 // Send the modified response back to the client
                 sendMessage(clientSocket, modifiedResponse);
@@ -347,7 +367,7 @@ void setupServer(const char *ipAddress, const char *port) {
 
 int main() {
     const char *ipAddress = "127.0.0.1";
-    const char *port = "8088";
+    const char *port = "8080";
 
     setupServer(ipAddress, port);
 
