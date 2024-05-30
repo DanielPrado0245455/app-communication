@@ -3,7 +3,7 @@ import Chat from './Chat';
 import './styles/ListChats.scss';
 import { cipher, decipher } from './utils/clientCipher';
 
-function ListChats({ chats, onChatSelect, setChats, currentUser, users }) {
+function ListChats({ chats, onChatSelect, setChats, currentUser, users, newMessageChatId }) {
     const [showMenu, setShowMenu] = useState(false);
     const [newChatTitle, setNewChatTitle] = useState('');
     const [showCreateForm, setShowCreateForm] = useState(false);
@@ -199,7 +199,11 @@ function ListChats({ chats, onChatSelect, setChats, currentUser, users }) {
 
             {chats.filter(chat => chat.users.includes(currentUser)).map((chat, index) => (
                 <div key={index} onClick={() => handleChatSelect(chat)} className="Chatbox">
-                    <Chat user={chat.title ? chat.title : chat.creator} img={require(`./assets/Apodo.png`)} />
+                    <Chat 
+                        user={chat.title ? chat.title : chat.creator} 
+                        img={require(`./assets/Apodo.png`)} 
+                        isNewMessage={chat.id === newMessageChatId} // Pasar la prop isNewMessage
+                    />
                 </div>
             ))}
         </div>
