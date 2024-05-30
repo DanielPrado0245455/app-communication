@@ -13,6 +13,7 @@
 #define UDP_SERVER_IP "127.0.0.1"  // Change to your UDP server IP
 #define UDP_SERVER_PORT 8485  // Change to your UDP server port
 
+
 void send_udp_message(const char *message) {
     int sockfd;
     struct sockaddr_in server_addr;
