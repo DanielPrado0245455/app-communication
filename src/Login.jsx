@@ -10,6 +10,11 @@ function Login({ onLogin }) { // Elimina navigate de la lista de props
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
 
+  const handleEnterPress = (event) => {
+    if (event.key === 'Enter') {
+        handleLoginSubmit();
+    }
+};
   const handleLoginSubmit = () => {
 
     // Validar que se haya ingresado un nombre de usuario y una contraseña
@@ -49,6 +54,7 @@ function Login({ onLogin }) { // Elimina navigate de la lista de props
           className="input"
           placeholder="Contraseña"
           value={password}
+          onKeyPress={handleEnterPress}
           onChange={(e) => setPassword(e.target.value)}
         />
         {error && <p className="error">{error}</p>}
