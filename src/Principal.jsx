@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import ListChats from './ListChats';
 import ChatContainer from './ChatContainer';
-import data from './data/data.json';
 import './styles/Principal.scss';
 
 function Principal() {
@@ -12,8 +11,16 @@ function Principal() {
     const [selectedChat, setSelectedChat] = useState(null);
 
     useEffect(() => {
-        setChats(data.chats);
-        setUsers(data.users); 
+        // Realizar solicitudes al backend para obtener los chats y usuarios
+        fetch('/api/chatrooms/')
+            .then(response => response.json())
+            .then(data => setChats(data))
+            .catch(error => console.error('Error fetching chats:', error));
+
+        fetch('/api/usuarios/')
+            .then(response => response.json())
+            .then(data => setUsers(data))
+            .catch(error => console.error('Error fetching users:', error));
     }, []);
 
     const handleChatSelect = (chat) => {
@@ -23,7 +30,7 @@ function Principal() {
     const handleSendMessage = (message) => {
         if (selectedChat) {
             const updatedChats = chats.map(chat => {
-                if (chat.user === selectedChat.user) {
+                if (chat.creator === selectedChat.creator) {
                     return {
                         ...chat,
                         messages: [...chat.messages, message]
@@ -38,7 +45,7 @@ function Principal() {
     const getAvailableParticipants = () => {
         // Filtrar los usuarios que no están en el chat seleccionado actualmente
         if (selectedChat) {
-            return users.filter(user => !selectedChat.participants.some(participant => participant.toString() === user.username.toString()));
+            return users.filter(user => !selectedChat.users.some(participant => participant.toString() === user.username.toString()));
         } else {
             return [];
         }

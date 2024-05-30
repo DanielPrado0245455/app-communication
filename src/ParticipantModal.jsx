@@ -1,18 +1,38 @@
 import React from 'react';
 
 function ParticipantModal(props) {
-    const { availableParticipants, onClose, onParticipantSelect } = props;
+    const { availableParticipants, onClose, onParticipantSelect, chatroomId, chat } = props;
 
     const handleCloseModal = (e) => {
-        // Verifica si se hizo clic en el fondo oscuro del modal
         if (e.target.classList.contains('modal-overlay')) {
             onClose();
         }
     };
 
     const handleParticipantSelect = (participant) => {
-        onParticipantSelect(participant);
-        onClose();
+        fetch(`/api/chatrooms/${chatroomId}/`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                ...chat,
+                users: [...chat.users, participant.username],
+            }),
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Failed to add participant');
+            }
+            return response.json();
+        })
+        .then(data => {
+            onParticipantSelect(participant);
+            onClose();
+        })
+        .catch(error => {
+            console.error('Error adding participant:', error);
+        });
     };
 
     return (

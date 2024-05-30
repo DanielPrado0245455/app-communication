@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { useNavigate } from "react-router-dom"; // Importa useNavigate desde react-router-dom
 import "./styles/Login.scss";
 import Logo from "./assets/Logo.png";
-import {sendToServer, cipher} from "./utils";
 
 
 function Login({ onLogin }) { // Elimina navigate de la lista de props
@@ -19,23 +18,7 @@ function Login({ onLogin }) { // Elimina navigate de la lista de props
       return;
     }
 
-    // Crear un objeto con los datos del formulario
-    const formData = cipher(`authenticate,${username},${password}`,5)
-
-    sendToServer(formData)
-        .then(response => {
-            console.log(response.data)
-          if(parseInt(response.data) === 1){
-            onLogin(username, password, navigate);
-          }
-          else{
-            alert("Incorrecto")
-          }
-        })
-        .catch(error => {
-          // Handle any errors that occurred during the WebSocket communication
-        });
-
+    onLogin(username, password, navigate);
   };
 
 
