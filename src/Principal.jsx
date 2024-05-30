@@ -80,6 +80,7 @@ function Principal() {
                 availableParticipants={getAvailableParticipants()} 
                 chats={chats} // Pasar chats y setChats al ChatContainer
                 setChats={setChats}
+                onChatSelect={handleChatSelect} 
             />
         </div>
     );

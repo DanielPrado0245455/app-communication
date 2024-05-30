@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import Logo from './assets/Logo.png';
 import './styles/SignUp.scss';
+import { decipher } from './utils/serverDecipher';
+import { cipher } from './utils/clientCipher';
 
 function SignUp() {
   const [username, setUsername] = useState('');
@@ -10,17 +12,21 @@ function SignUp() {
   const [error, setError] = useState('');
 
   useEffect(() => {
-    fetch('/api/elobbies/',{
+    fetch('/api/elobbies/', {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json'
       }
     })
-    .then(response => response.json())
+    .then(response => response.text())  // Get the response as text
     .then(data => {
-      setElobby(data[0].name);
-      console.log(data[0].name);
+      const decipheredData = decipher(data, 1); // Decipher the data
+      const parsedData = JSON.parse(decipheredData); // Parse the deciphered data as JSON
+      const elobbyName = parsedData[0].name; // Get the name of the first element
+      setElobby(elobbyName); // Set the elobby state
+      console.log(elobbyName); // Log the elobby name
     })
+    .catch(error => console.error('Error fetching elobbies:', error)); // Catch and log any errors
   }, []);
 
   const handleEnterPress = (event) => {
@@ -28,43 +34,61 @@ function SignUp() {
         handleSignUp();
     }
 };
-  const handleSignUp = () => {
-    // Valida que se hayan ingresado todos los campos
-    if (!username || !nickname || !password) {
-      setError('Por favor, completa todos los campos.');
-      return;
-    }
+const handleSignUp = () => {
+  // Validate that all fields are entered
+  if (!username || !nickname || !password) {
+    setError('Por favor, completa todos los campos.');
+    return;
+  }
 
-    // Crea un objeto con los datos del nuevo usuario
-    const newUser = {
-      username,
-      password,
-      nickname,
-      elobby
-    };
-    console.log(newUser);
-
-    // Realiza una solicitud POST al servidor para registrar el nuevo usuario
-    fetch('/api/usuarios/', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(newUser)
-    })
-    .then(response => {
-      if (!response.ok) {
-        throw new Error('Failed to register user');
-      }
-      // Redirige al usuario a la página principal después del registro exitoso
-      window.location.href = `/principal/${username}`;
-    })
-    .catch(error => {
-      console.error('Error registering user:', error);
-      // Muestra un mensaje de error en caso de fallo en el registro
-      setError('Error al registrar usuario. Por favor, intenta nuevamente.');
-    });
+  // Create an object with the new user data
+  const newUser = {
+    username,
+    password,
+    nickname,
+    elobby
   };
+  console.log(newUser);
+
+  // Perform a POST request to the server to register the new user
+  fetch('/api/usuarios/', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: cipher(JSON.stringify(newUser), 1)
+  })
+  .then(response => {
+    if (!response.ok) {
+      throw new Error('Failed to register user');
+    }
+    // Redirect the user to the main page after successful registration
+    window.location.href = `/principal/${username}`;
+  })
+  .catch(error => {
+    console.error('Error registering user:', error);
+    // Show an error message in case of registration failure
+    setError('Error al registrar usuario. Por favor, intenta nuevamente.');
+  });
+};
+
+// Example of the cipher function
+function cipher(msg, key) {
+  if (msg === undefined) {
+    msg = "closed";
+  }
+  if (key === undefined) {
+    key = 0;
+  }
+
+  let result = "";
+  for (let i = 0; i < msg.length; i++) {
+    let chara = String.fromCharCode(msg.charCodeAt(i) + key);
+    result += chara;
+  }
+
+  return result;
+}
 
   return (
     <div className="SignUp">

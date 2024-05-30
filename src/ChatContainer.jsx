@@ -11,6 +11,7 @@ import Participantes from './assets/Participantes.png';
 import Solicitud from './assets/Solicitud.png';
 import Enviar from './assets/Enviar.png';
 import { decipher } from './utils/serverDecipher';
+import { cipher } from './utils/clientCipher';
 
 function ChatContainer(props) {
     const { userId } = useParams();
@@ -45,16 +46,16 @@ function ChatContainer(props) {
                     const response = await fetch(`/api/mensajes/?chatroom=${props.chat.id}`);
                     const data = await response.text();
                     const decipheredText = decipher(data, 1);
-                    const i = JSON.parse(decipheredText);
-                    setMessages(i);
+                    const messages = JSON.parse(decipheredText);
+                    setMessages(messages);
                 } catch (error) {
                     console.error('Error fetching messages:', error);
                 }
             };
-
+    
             fetchMessages();
             const intervalId = setInterval(fetchMessages, 5000);
-
+    
             return () => clearInterval(intervalId);
         }
     }, [props.chat]);
@@ -69,28 +70,31 @@ function ChatContainer(props) {
 
     const sendMessage = useCallback(async () => {
         if (newMessage.trim() === '') return;
-
+    
         if (!props.chat || !props.chat.id) {
             console.error('No chat selected or chat ID is missing');
             return;
         }
-
+    
         const message = {
             user: userId,
             text: newMessage.trim(),
             chatroom: props.chat.id,
         };
-
+    
         try {
             const response = await fetch('/api/mensajes/', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(message),
+                body: cipher(JSON.stringify(message), 1),
             });
-
+    
             if (!response.ok) throw new Error('Failed to send message');
-
-            const data = await response.json();
+    
+            const responseData = await response.text(); // Get response text
+            const decipheredData = decipher(responseData, 1); // Decipher the response data
+            const data = JSON.parse(decipheredData); // Parse the deciphered data
+    
             setMessages((prevMessages) => [...prevMessages, data]);
             setNewMessage('');
             props.onSendMessage(data);
@@ -98,6 +102,7 @@ function ChatContainer(props) {
             console.error('Error sending message:', error);
         }
     }, [newMessage, props.chat, userId, props.onSendMessage]);
+    
 
     const getUserNickname = (username) => {
         const user = props.allParticipants.find(participant => participant.username === username);
@@ -139,10 +144,15 @@ function ChatContainer(props) {
     const checkAndDeleteChatroom = useCallback(async () => {
         if (activeParticipants.length === 1 && props.chat) {
             try {
-                await fetch(`/api/chatrooms/${props.chat.id}`, {
+                const response = await fetch(`/api/chatrooms/${props.chat.id}`, {
                     method: 'DELETE',
                 });
-                props.onChatDeleted(props.chat.id); // Asumiendo que tienes esta función en props para manejar la eliminación del chat
+    
+                if (!response.ok) {
+                    throw new Error('Failed to delete chatroom');
+                }
+    
+                props.chat(null); // Assuming you have this function in props to handle the chat deletion
             } catch (error) {
                 console.error('Error deleting chatroom:', error);
             }

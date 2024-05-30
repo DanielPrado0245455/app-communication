@@ -1,4 +1,5 @@
 import React from 'react';
+import { cipher, decipher } from './utils/clientCipher';
 
 function ParticipantModal({ availableParticipants, onClose, onParticipantSelect, chatroomId, chat }) {
     const handleCloseModal = (e) => {
@@ -6,31 +7,31 @@ function ParticipantModal({ availableParticipants, onClose, onParticipantSelect,
             onClose();
         }
     };
-
-    const handleParticipantSelect = (participant) => {
-        fetch(`/api/chatrooms/${chatroomId}/`, {
-            method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                ...chat,
-                users: [...chat.users, participant.username],
-            }),
-        })
-        .then(response => {
+    const handleParticipantSelect = async (participant) => {
+        try {
+            const response = await fetch(`/api/chatrooms/${chatroomId}/`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: cipher(JSON.stringify({
+                    ...chat,
+                    users: [...chat.users, participant.username],
+                }), 1),
+            });
+    
             if (!response.ok) {
                 throw new Error('Failed to add participant');
             }
-            return response.json();
-        })
-        .then(data => {
-            onParticipantSelect(data.users); // Pass the updated list of users
+    
+            const responseBody = await response.text();
+            const decryptedData = JSON.parse(decipher(responseBody, 1));
+    
+            onParticipantSelect(decryptedData.users); // Pass the updated list of users
             onClose();
-        })
-        .catch(error => {
+        } catch (error) {
             console.error('Error adding participant:', error);
-        });
+        }
     };
 
     return (

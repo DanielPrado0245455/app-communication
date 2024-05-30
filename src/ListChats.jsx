@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import Chat from './Chat';
 import './styles/ListChats.scss';
+import { cipher, decipher } from './utils/clientCipher';
 
 function ListChats({ chats, onChatSelect, setChats, currentUser, users }) {
     const [showMenu, setShowMenu] = useState(false);
@@ -30,26 +31,29 @@ function ListChats({ chats, onChatSelect, setChats, currentUser, users }) {
 
     const handleCreateFormSubmit = (event) => {
         event.preventDefault();
+    
         const newChat = {
             creator: currentUser,
             users: [...participants, currentUser],
             requests: [],
             title: newChatTitle
         };
-
+    
         fetch('/api/chatrooms/', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify(newChat)
+            body: cipher(JSON.stringify(newChat), 1)
         })
-        .then(response => response.json())
+        .then(response => response.text()) // Get response text
         .then(data => {
-            setChats([...chats, data]);
-            setNewChatTitle('');
-            setParticipants([]);
-            setShowCreateForm(false);
+            const decipheredData = decipher(data, 1); // Decipher the response data
+            const parsedData = JSON.parse(decipheredData); // Parse the deciphered data
+            setChats(prevChats => [...prevChats, parsedData]); // Update chats state
+            setNewChatTitle(''); // Clear new chat title
+            setParticipants([]); // Clear participants
+            setShowCreateForm(false); // Hide create form
         })
         .catch(error => {
             console.error('Error creating chat:', error);
@@ -83,22 +87,24 @@ function ListChats({ chats, onChatSelect, setChats, currentUser, users }) {
             ...chat,
             requests: [...chat.requests, currentUser],
         };
-
+    
         fetch(`/api/chatrooms/${chat.id}/`, {
             method: 'PUT',
             headers: {
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify(updatedChat),
+            body: cipher(JSON.stringify(updatedChat), 1),
         })
         .then(response => {
             if (!response.ok) {
                 throw new Error('Failed to join chat');
             }
-            return response.json();
+            return response.text(); // Get response text
         })
         .then(data => {
-            const updatedChats = chats.map(c => (c.id === chat.id ? data : c));
+            const decipheredData = decipher(data, 1); // Decipher the response data
+            const parsedData = JSON.parse(decipheredData); // Parse the deciphered data
+            const updatedChats = chats.map(c => (c.id === chat.id ? parsedData : c));
             setChats(updatedChats);
             setShowJoinChatModal(false);
         })

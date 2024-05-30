@@ -1,5 +1,7 @@
 import React from 'react';
 import './styles/ActiveParticipantsModal.scss';
+import { cipher } from './utils/clientCipher';
+import { decipher } from './utils/serverDecipher';
 
 function ActiveParticipantsModal(props) {
     const { participants, onClose, chatroomId, chat, userId } = props;
@@ -17,18 +19,19 @@ function ActiveParticipantsModal(props) {
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({
+                body: cipher(JSON.stringify({
                     ...chat,
                     users: chat.users.filter(user => user !== participant),
-                }),
+                }), 1),
             });
-
+    
             if (!response.ok) {
                 throw new Error('Failed to delete participant');
             }
-
-            const data = await response.json();
-            props.onDeleteParticipant(data.users);
+    
+            const responseBody = await response.text();
+            const decryptedData = JSON.parse(decipher(responseBody, 1));
+            props.onDeleteParticipant(decryptedData.users);
         } catch (error) {
             console.error('Error deleting participant:', error);
         }
