@@ -127,7 +127,6 @@ function ChatContainer(props) {
         setActiveParticipants(updatedUsers);
         if (updatedUsers.length === 0 && props.chat) {
             props.onChatDeleted(props.chat.id);
-            setShowActiveParticipantsModal(false);
         }
     }, [props.onChatDeleted, props.chat]);
 
