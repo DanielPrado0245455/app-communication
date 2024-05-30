@@ -47,7 +47,9 @@ function ActiveParticipantsModal(props) {
                 <ul>
                     {participants.map((participant, index) => (
                         <li key={index}>
-                            <p className="user">{participant}</p>
+                            <p className="user">
+                                {participant} {chat.creator === participant && <span>(coordinador)</span>}
+                            </p>
                             {chat.creator === userId && (
                                 <button className="Btn" onClick={() => deleteParticipant(participant)}>
                                     <img src={require("./assets/Eliminar.png")} alt="Eliminar" className='Img' />
