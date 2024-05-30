@@ -65,27 +65,27 @@ function ChatContainer(props) {
 
     const sendMessage = useCallback(async () => {
         if (newMessage.trim() === '') return;
-    
+
         if (!props.chat || !props.chat.id) {
             console.error('No chat selected or chat ID is missing');
             return;
         }
-    
+
         const message = {
             user: userId,
             text: newMessage.trim(),
             chatroom: props.chat.id,
         };
-    
+
         try {
             const response = await fetch('/api/mensajes/', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(message),
             });
-    
+
             if (!response.ok) throw new Error('Failed to send message');
-    
+
             const data = await response.json();
             setMessages((prevMessages) => [...prevMessages, data]);
             setNewMessage('');
@@ -94,7 +94,11 @@ function ChatContainer(props) {
             console.error('Error sending message:', error);
         }
     }, [newMessage, props.chat, userId, props.onSendMessage]);
-    
+
+    const getUserNickname = (username) => {
+        const user = props.allParticipants.find(participant => participant.username === username);
+        return user ? user.nickname : 'Desconocido';
+    };
 
     const getAvailableParticipants = useMemo(() => {
         if (props.chat) {
@@ -119,18 +123,31 @@ function ChatContainer(props) {
     const closeActiveParticipantsModal = () => setShowActiveParticipantsModal(false);
 
     const openRequestModal = () => setShowRequestModal(true);
-    const closeRequestModal = () => setShowRequestModal(false);
+    const closeRequestModal = (updatedChat) => {
+        if (updatedChat) {
+            const updatedChats = props.chats.map(c => (c.id === updatedChat.id ? updatedChat : c));
+            props.setChats(updatedChats);
+            props.onChatSelect(updatedChat); // Update the selected chat
+        }
+        setShowRequestModal(false);
+    };
 
-    if (!props.chat) {
-        return (
-            <div className="ChatContainer">
-                <div className="NoChatSelected">
-                    <img src={Logo} alt="Logo" className="Logo" />
-                    <p className="NoChatSelectedText">Selecciona un chat para comenzar</p>
-                </div>
-            </div>
-        );
-    }
+    const checkAndDeleteChatroom = useCallback(async () => {
+        if (activeParticipants.length === 1 && props.chat) {
+            try {
+                await fetch(`/api/chatrooms/${props.chat.id}`, {
+                    method: 'DELETE',
+                });
+                props.onChatDeleted(props.chat.id); // Asumiendo que tienes esta función en props para manejar la eliminación del chat
+            } catch (error) {
+                console.error('Error deleting chatroom:', error);
+            }
+        }
+    }, [activeParticipants, props.chat, props.onChatDeleted]);
+
+    useEffect(() => {
+        checkAndDeleteChatroom();
+    }, [activeParticipants, checkAndDeleteChatroom]);
 
     return (
         <div className="ChatContainer">
@@ -142,14 +159,18 @@ function ChatContainer(props) {
                             <h1>{props.chat.title}</h1>
                         </div>
                         <div className="Participants">
-                            <button className="Btn" onClick={openAddParticipantModal}>
-                                <img src={Agregar} alt="Logo" className='Img' />
-                            </button>
+                            {props.chat.creator === userId && (
+                                <>
+                                    <button className="Btn" onClick={openAddParticipantModal}>
+                                        <img src={Agregar} alt="Logo" className='Img' />
+                                    </button>
+                                    <button className="Btn" onClick={openRequestModal}>
+                                        <img src={Solicitud} alt="Logo" className='Img' />
+                                    </button>
+                                </>
+                            )}
                             <button className="Btn" onClick={openActiveParticipantsModal}>
                                 <img src={Participantes} alt="Logo" className='Img' />
-                            </button>
-                            <button className="Btn" onClick={openRequestModal}>
-                                <img src={Solicitud} alt="Logo" className='Img' />
                             </button>
                         </div>
                     </div>
@@ -157,7 +178,7 @@ function ChatContainer(props) {
                         {messages.map((message) => (
                             <div key={message.id} className={`Message ${message.user === userId ? 'sent' : 'received'}`}>
                                 <div className="MessageHeader">
-                                    <span className="Sender">{message.user ? (userId === message.user ? 'Tu' : message.user) : message.sender}</span>
+                                    <span className="Sender">{getUserNickname(message.user)}</span>
                                 </div>
                                 <div className="MessageBody">
                                     {message.text}
@@ -194,12 +215,16 @@ function ChatContainer(props) {
                             onClose={closeActiveParticipantsModal}
                             chatroomId={props.chat.id}
                             chat={props.chat}
+                            userId={userId} // Pasar userId a ActiveParticipantsModal
                             onDeleteParticipant={handleDeleteParticipant}
                         />
                     )}
                     {showRequestModal && (
                         <RequestModal
                             requests={props.chat.requests}
+                            chatId={props.chat.id}
+                            chats={props.chats}
+                            setChats={props.setChats}
                             onClose={closeRequestModal}
                         />
                     )}

@@ -2,7 +2,7 @@ import React from 'react';
 import './styles/ActiveParticipantsModal.scss';
 
 function ActiveParticipantsModal(props) {
-    const { participants, onClose, chatroomId, chat } = props;
+    const { participants, onClose, chatroomId, chat, userId } = props;
 
     const handleCloseModal = (e) => {
         if (e.target.classList.contains('modal-overlay')) {
@@ -19,7 +19,7 @@ function ActiveParticipantsModal(props) {
                 },
                 body: JSON.stringify({
                     ...chat,
-                    users: chat.users.filter(user => user !== participant.username),
+                    users: chat.users.filter(user => user !== participant),
                 }),
             });
 
@@ -42,9 +42,11 @@ function ActiveParticipantsModal(props) {
                     {participants.map((participant, index) => (
                         <li key={index}>
                             <p className="user">{participant}</p>
-                            <button className="Btn" onClick={() => deleteParticipant(participant)}>
-                                <img src={require("./assets/Eliminar.png")} alt="Eliminar" className='Img' />
-                            </button>
+                            {chat.creator === userId && (
+                                <button className="Btn" onClick={() => deleteParticipant(participant)}>
+                                    <img src={require("./assets/Eliminar.png")} alt="Eliminar" className='Img' />
+                                </button>
+                            )}
                         </li>
                     ))}
                 </ul>
