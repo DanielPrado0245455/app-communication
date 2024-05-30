@@ -53,6 +53,21 @@
                     color: #F0F0F0;
                     text-align: left;
                 }
+
+                button{
+                    background-color: #004c4c;
+                    color: white;
+                    border: none;
+                    border-radius: 5px;
+                    padding: 5px 10px;
+                    cursor: pointer;
+                    transition: background-color 0.3s ease;
+                    &:hover{
+                        background-color: #336666;
+                    }
+                }
+
+
                 
             }
         }
