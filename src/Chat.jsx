@@ -1,14 +1,15 @@
 import React from "react";
 import "./styles/Chat.scss";
+import defaultImg from './assets/Apodo.png';
 
-function Chat(props) {
+function Chat({ user, img, isNewMessage }) {
     return (
         <div className="Chat">
             <div className="containerImg">
-                <img src={props.img ? props.img : require('./assets/Apodo.png')} alt="user" className="img"/>
-                <span></span>
+                <img src={img ? img : defaultImg} alt="user" className="img" />
+                <span className={isNewMessage ? 'active' : 'inactive'}></span>
             </div>        
-            <p className="user">{props.user}</p>
+            <p className="user">{user}</p>
         </div>
     );
 }

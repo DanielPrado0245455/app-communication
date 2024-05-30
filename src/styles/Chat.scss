@@ -17,7 +17,6 @@
         cursor: pointer;
         overflow: visible;
         margin-top: 0px;
-        
     }
 
     .containerImg {
@@ -28,23 +27,30 @@
         justify-content: center;
         border-radius: 50%;
         position: relative;
-       
 
         .img {
             border-radius: 50%;
             width: 100%;
             height: auto;
         }
-    }
 
-    .containerImg span{
-        position: absolute;
-        bottom: 0;
-        right: 0;
-        width: 20px;
-        height: 20px;
-        border-radius: 50%;
-        background-color: #FFA500;
+        span {
+            position: absolute;
+            bottom: 0;
+            right: 0;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background-color: #FFA500; // Color por defecto
+
+            &.active {
+                background-color: #FFA500; // Color para nuevos mensajes
+            }
+
+            &.inactive {
+                background-color: transparent; // Sin color para mensajes ya vistos
+            }
+        }
     }
 
     .user {
