@@ -145,6 +145,7 @@ function ListChats({ chats, onChatSelect, setChats, currentUser, users, newMessa
                                 placeholder="Nombre del chat"
                                 value={newChatTitle}
                                 onChange={(e) => setNewChatTitle(e.target.value)}
+                                required
                             />
                             <ul>
                                 {createChatUsers.map((user, index) => (

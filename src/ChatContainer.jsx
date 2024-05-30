@@ -34,7 +34,6 @@ function ChatContainer(props) {
     useEffect(() => {
         if (props.chat) {
             setMessages(props.chat.messages || []);
-            console.log(messages)
             setActiveParticipants(props.chat.users || []);
         }
     }, [props.chat]);
@@ -91,9 +90,9 @@ function ChatContainer(props) {
     
             if (!response.ok) throw new Error('Failed to send message');
     
-            const responseData = await response.text(); // Get response text
-            const decipheredData = decipher(responseData, 1); // Decipher the response data
-            const data = JSON.parse(decipheredData); // Parse the deciphered data
+            const responseData = await response.text();
+            const decipheredData = decipher(responseData, 1);
+            const data = JSON.parse(decipheredData);
     
             setMessages((prevMessages) => [...prevMessages, data]);
             setNewMessage('');
@@ -124,9 +123,12 @@ function ChatContainer(props) {
         closeAddParticipantModal();
     };
 
-    const handleDeleteParticipant = (updatedUsers) => {
+    const handleDeleteParticipant = useCallback((updatedUsers) => {
         setActiveParticipants(updatedUsers);
-    };
+        if (updatedUsers.length === 0 && props.chat) {
+            props.onChatDeleted(props.chat.id);
+        }
+    }, [props.onChatDeleted, props.chat]);
 
     const openActiveParticipantsModal = () => setShowActiveParticipantsModal(true);
     const closeActiveParticipantsModal = () => setShowActiveParticipantsModal(false);
@@ -136,7 +138,7 @@ function ChatContainer(props) {
         if (updatedChat) {
             const updatedChats = props.chats.map(c => (c.id === updatedChat.id ? updatedChat : c));
             props.setChats(updatedChats);
-            props.onChatSelect(updatedChat); // Update the selected chat
+            props.onChatSelect(updatedChat);
         }
         setShowRequestModal(false);
     };
@@ -152,7 +154,7 @@ function ChatContainer(props) {
                     throw new Error('Failed to delete chatroom');
                 }
     
-                props.chat(null); // Assuming you have this function in props to handle the chat deletion
+                props.onChatDeleted(props.chat.id);
             } catch (error) {
                 console.error('Error deleting chatroom:', error);
             }
@@ -239,8 +241,9 @@ function ChatContainer(props) {
                             onClose={closeActiveParticipantsModal}
                             chatroomId={props.chat.id}
                             chat={props.chat}
-                            userId={userId} // Pasar userId a ActiveParticipantsModal
+                            userId={userId}
                             onDeleteParticipant={handleDeleteParticipant}
+                            onChatDeleted={props.onChatDeleted} // Pass this prop to handle chat deletion
                         />
                     )}
                     {showRequestModal && (

@@ -1,28 +1,26 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useParams } from 'react-router-dom';
 import ListChats from './ListChats';
 import ChatContainer from './ChatContainer';
 import './styles/Principal.scss';
 import { decipher } from './utils/serverDecipher';
-import { cipher } from './utils/clientCipher';
 
 function Principal() {
-    const { userId } = useParams(); // Get userId from URL parameters
+    const { userId } = useParams();
     const [chats, setChats] = useState([]);
     const [users, setUsers] = useState([]);
     const [selectedChat, setSelectedChat] = useState(null);
-    const [initialChats, setInitialChats] = useState([]); // Copy of initial chats
-    const [newMessageChatId, setNewMessageChatId] = useState(null); // ID of the chat with new messages
+    const [initialChats, setInitialChats] = useState([]);
+    const [newMessageChatId, setNewMessageChatId] = useState(null);
 
     useEffect(() => {
-        // Fetch chats and users from the backend
         const fetchChatsAndUsers = async () => {
             try {
                 const chatResponse = await fetch('/api/chatrooms/');
                 const chatText = await chatResponse.text();
                 const chatData = JSON.parse(decipher(chatText, 1));
                 setChats(chatData);
-                setInitialChats(chatData); // Save initial copy of chats
+                setInitialChats(chatData);
 
                 const userResponse = await fetch('/api/usuarios/');
                 const userText = await userResponse.text();
@@ -34,7 +32,7 @@ function Principal() {
         };
 
         fetchChatsAndUsers();
-    }, []); // Empty dependency array ensures this effect runs only once
+    }, []);
 
     useEffect(() => {
         const fetchMessages = async () => {
@@ -44,7 +42,6 @@ function Principal() {
                 const decipheredText = decipher(data, 1);
                 const newMessages = JSON.parse(decipheredText);
 
-                // Organize new messages by chatroom
                 const newMessagesByChat = newMessages.reduce((acc, message) => {
                     if (!acc[message.chatroom]) {
                         acc[message.chatroom] = [];
@@ -53,7 +50,6 @@ function Principal() {
                     return acc;
                 }, {});
 
-                // Compare new messages with the initially stored messages
                 setInitialChats(prevInitialChats => {
                     let updatedInitialChats = [...prevInitialChats];
                     for (let chatroomId in newMessagesByChat) {
@@ -61,14 +57,12 @@ function Principal() {
                         const initialChat = prevInitialChats.find(chat => chat.id === parseInt(chatroomId));
                         const existingMessages = initialChat ? initialChat.messages : [];
                         if (JSON.stringify(existingMessages) !== JSON.stringify(newMessagesForChat)) {
-                            setNewMessageChatId(parseInt(chatroomId)); // Mark chat with new messages
-                            // Update the state of chats
+                            setNewMessageChatId(parseInt(chatroomId));
                             setChats(prevChats => prevChats.map(prevChat =>
                                 prevChat.id === parseInt(chatroomId)
                                     ? { ...prevChat, messages: newMessagesForChat }
                                     : prevChat
                             ));
-                            // Update the state of initialChats
                             updatedInitialChats = updatedInitialChats.map(prevInitialChat =>
                                 prevInitialChat.id === parseInt(chatroomId)
                                     ? { ...prevInitialChat, messages: newMessagesForChat }
@@ -83,21 +77,19 @@ function Principal() {
             }
         };
 
-        const intervalId = setInterval(fetchMessages, 5000); // 5-second interval
+        const intervalId = setInterval(fetchMessages, 5000);
 
         return () => {
-            clearInterval(intervalId); // Clear interval when the component unmounts
+            clearInterval(intervalId);
         };
-    }, [initialChats]); // Run the effect when initialChats changes
+    }, []);
 
     const handleChatSelect = (chat) => {
         setSelectedChat(chat);
 
         if (chat.id === newMessageChatId) {
-            // Clear new message alert when selecting the chat
             setNewMessageChatId(null);
 
-            // Update local messages as read
             setInitialChats(prev => prev.map(prevChat =>
                 prevChat.id === chat.id
                     ? { ...prevChat, messages: chat.messages }
@@ -119,7 +111,6 @@ function Principal() {
             });
             setChats(updatedChats);
 
-            // Update the backend with the new message
             await fetch(`/api/chatrooms/${selectedChat.id}/`, {
                 method: 'PUT',
                 headers: {
@@ -130,14 +121,18 @@ function Principal() {
         }
     };
 
-    const getAvailableParticipants = () => {
-        // Filter users not currently in the selected chat
+    const handleChatDeleted = useCallback((deletedChatId) => {
+        setSelectedChat(null);
+        setChats(prevChats => prevChats.filter(chat => chat.id !== deletedChatId));
+    }, []);
+
+    const getAvailableParticipants = useMemo(() => {
         if (selectedChat) {
             return users.filter(user => !selectedChat.users.some(participant => participant.toString() === user.username.toString()));
         } else {
             return [];
         }
-    };
+    }, [selectedChat, users]);
 
     return (
         <div className="Principal">
@@ -147,19 +142,21 @@ function Principal() {
                 setChats={setChats} 
                 currentUser={userId} 
                 users={users}
-                newMessageChatId={newMessageChatId} // Pass the chat ID with new messages
+                newMessageChatId={newMessageChatId}
             />
             <ChatContainer
                 chat={selectedChat}
                 onSendMessage={handleSendMessage}
                 allParticipants={users} 
-                availableParticipants={getAvailableParticipants()} 
+                availableParticipants={getAvailableParticipants} 
                 chats={chats} 
                 setChats={setChats}
                 onChatSelect={handleChatSelect} 
+                onChatDeleted={handleChatDeleted}
             />
         </div>
     );
 }
 
 export default Principal;
+
